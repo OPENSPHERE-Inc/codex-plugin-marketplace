@@ -1,0 +1,26 @@
+{
+  "name": "creview",
+  "version": "0.1.0",
+  "description": "Parallel code-review workflow for Codex: review, triage, respond, resolve, and multi-round orchestration.",
+  "author": {
+    "name": "OPENSPHERE Inc.",
+    "url": "https://github.com/OPENSPHERE-Inc"
+  },
+  "homepage": "https://github.com/OPENSPHERE-Inc/codex-plugin-marketplace",
+  "repository": "https://github.com/OPENSPHERE-Inc/codex-plugin-marketplace",
+  "license": "MIT",
+  "keywords": ["code-review", "codex", "multi-agent", "triage"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "CReview",
+    "shortDescription": "Run structured parallel code reviews",
+    "longDescription": "Coordinate Codex sub-agents through review, adversarial triage, fixes, verification, and bounded multi-round review workflows.",
+    "developerName": "OPENSPHERE Inc.",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": [
+      "Use CReview to review the current branch",
+      "Triage and resolve this CReview report"
+    ]
+  }
+}

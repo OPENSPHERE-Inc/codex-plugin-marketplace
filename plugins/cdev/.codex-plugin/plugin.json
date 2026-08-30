@@ -1,0 +1,23 @@
+{
+  "name": "cdev",
+  "version": "0.1.0",
+  "description": "Explicit multi-agent software-development workflow for Codex with design, implementation, review, and QA gates.",
+  "author": {
+    "name": "OPENSPHERE Inc.",
+    "url": "https://github.com/OPENSPHERE-Inc"
+  },
+  "homepage": "https://github.com/OPENSPHERE-Inc/codex-plugin-marketplace",
+  "repository": "https://github.com/OPENSPHERE-Inc/codex-plugin-marketplace",
+  "license": "MIT",
+  "keywords": ["coding", "codex", "multi-agent", "design", "qa"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "CDev",
+    "shortDescription": "Coordinate multi-agent development",
+    "longDescription": "Run an explicitly requested Codex multi-agent workflow through design, paired review, implementation, and QA.",
+    "developerName": "OPENSPHERE Inc.",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": ["Use CDev to implement this task with multiple agents"]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "cprompt",
+  "version": "0.1.0",
+  "description": "Create, edit, compress, and validate AI-facing prompts and Codex skills.",
+  "author": {
+    "name": "OPENSPHERE Inc.",
+    "url": "https://github.com/OPENSPHERE-Inc"
+  },
+  "homepage": "https://github.com/OPENSPHERE-Inc/codex-plugin-marketplace",
+  "repository": "https://github.com/OPENSPHERE-Inc/codex-plugin-marketplace",
+  "license": "MIT",
+  "keywords": ["prompt-engineering", "codex", "skills", "authoring"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "CPrompt",
+    "shortDescription": "Author and validate Codex prompts",
+    "longDescription": "Create or edit AI-facing prompts and Codex skills, then self-check, compress, and interpretation-test the result.",
+    "developerName": "OPENSPHERE Inc.",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": [
+      "Create a concise Codex skill for this workflow",
+      "Review and compress this AI-facing prompt"
+    ]
+  }
+}
