@@ -12,7 +12,7 @@ Read decisions from the review document. Do not assume a temporary directory sha
 Resolve absolute `skill_dir` and `plugin_root` as in the other CReview skills and read `../../rules/sub-agent.md`.
 
 - Required: review document path.
-- `--adr` — Let fix agents read ADRs named by estimate metadata.
+- `--adr` — Allow creation of a new ADR when a fix introduces a durable design decision. Existing ADRs referenced by estimate metadata are read and updated during fixes regardless of this option.
 - `--commit` — After verification, stage only files recorded by this phase and create one concise commit. Never infer commit authorization without this option.
 
 Create `.codex/tmp/creview-respond-{timestamp}/statuses/`.

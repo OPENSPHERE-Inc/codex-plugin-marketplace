@@ -19,7 +19,7 @@ The review target may be paths, a branch, a revision range, a pull-request check
 
 - `--base {branch}` — Base branch; otherwise prefer an existing `main`, then `master`.
 - `--range {from}..{to}` — Review only that committed range and omit working-tree changes.
-- `--output {path}` — Review document path. Default: `.codex/reviews/creview-start-{timestamp}.md`.
+- `--output {path}` — Review document path. Default: `.codex/tmp/creview-start-{timestamp}.md`.
 - `--adversarial` — Use `templates/adversarial-reviewer.md`; otherwise use `templates/reviewer.md`.
 - An optional round number is reflected in the document title.
 

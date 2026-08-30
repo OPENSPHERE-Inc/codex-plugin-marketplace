@@ -12,6 +12,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_NAMES = ("cprompt", "creview", "cdev")
+PLUGIN_VERSIONS = {
+    "cprompt": "0.1.0",
+    "creview": "0.1.1",
+    "cdev": "0.1.0",
+}
 MARKETPLACE_NAME = "opensphere-inc-codex"
 UUID_PATTERN = re.compile(
     r"^template_id:\s*"
@@ -99,7 +104,7 @@ def validate_manifest(name: str, errors: list[str]) -> None:
         return
     expected = {
         "name": name,
-        "version": "0.1.0",
+        "version": PLUGIN_VERSIONS[name],
         "skills": "./skills/",
         "license": "MIT",
     }
