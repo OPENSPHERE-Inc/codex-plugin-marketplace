@@ -19,9 +19,23 @@ for Codex. It replaces Claude-specific background tasks and
 Example:
 
 ~~~text
-$creview:rounds Review the changes relative to origin/main, run up to 3 rounds,
-and stop early when no actionable finding remains.
+$creview:rounds .codex/tmp --base origin/main --max-rounds 3
 ~~~
+
+`$creview:rounds` accepts the same input and output controls as the Claude
+version, with `.codex/` replacing `.claude/`:
+
+- An optional positional output base path; default `.codex/tmp/`.
+- `--confirm`, `--confirm-round`, `--commit`, `--incremental`, `--adr`, and
+  `--adversarial`, all OFF by default.
+- `--max-rounds N`, default 5 with range 1–10.
+- `--base {branch}`, defaulting to an existing `main`, then `master`.
+- `--output-dir {path}` for earlier Codex calls; it selects the exact run
+  directory instead of adding a branch directory to the positional base path.
+
+Normal rounds re-review the whole branch diff, including working-tree changes,
+and do not require commits. `--incremental` reviews only the commits added by
+the preceding round and therefore also enables `--commit`.
 
 ## Execution model
 
@@ -37,9 +51,15 @@ external sequencer plugin.
 
 ## Output
 
-Review state is stored below `.codex/reviews/` in the repository being
-reviewed. Temporary prompts, JSONL responses, and diff artifacts stay below
-`.codex/tmp/`. The scripts reject paths that escape the scratch root.
+By default, `$creview:start` writes
+`.codex/tmp/creview-start-{timestamp}.md`. `$creview:rounds` writes
+`.codex/tmp/{branch-path}/review-round{N}.md` and `final-report.md`; repeat runs
+append the lowest unused `_N` suffix to the branch name. An explicit output
+path or rounds base path may place review documents elsewhere.
+
+Temporary prompts, JSONL responses, and diff artifacts stay below
+`.codex/tmp/`. The helper scripts reject temporary paths that escape the
+scratch root.
 
 Python helper scripts support diff capture, JSONL validation, document
 rendering, and phase result compilation.

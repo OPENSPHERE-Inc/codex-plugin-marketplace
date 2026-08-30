@@ -19,7 +19,7 @@ description: 明示的に依頼された並列・マルチエージェントコ�
 
 - `--base {branch}` — base branch。省略時は存在する `main`、次に `master` を優先する。
 - `--range {from}..{to}` — 指定した commit range だけをレビューし、working tree の変更は含めない。
-- `--output {path}` — レビュードキュメントのパス。デフォルトは `.codex/reviews/creview-start-{timestamp}.md`。
+- `--output {path}` — レビュードキュメントのパス。デフォルトは `.codex/tmp/creview-start-{timestamp}.md`。
 - `--adversarial` — `templates/adversarial-reviewer.md` を使う。省略時は `templates/reviewer.md`。
 - 任意の round number はドキュメントタイトルへ反映する。
 
