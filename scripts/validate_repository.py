@@ -14,10 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_NAMES = ("cprompt", "creview", "cdev")
 PLUGIN_VERSIONS = {
     "cprompt": "0.1.0",
-    "creview": "0.1.1",
+    "creview": "0.1.2",
     "cdev": "0.1.0",
 }
-MARKETPLACE_NAME = "opensphere-inc-codex"
+MARKETPLACE_NAME = "opensphere-inc"
 UUID_PATTERN = re.compile(
     r"^template_id:\s*"
     r"([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
