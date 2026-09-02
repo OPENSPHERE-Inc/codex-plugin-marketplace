@@ -22,8 +22,8 @@ root agent で 4 つの CReview phase skill を調整する。phase-leader agent
 
 オプション:
 
-- `--confirm`（デフォルト OFF）— triage と estimate の永続化後、respond 前に見積サマリーを示してユーザーを待つ。
-- `--confirm-round`（デフォルト OFF）— resolve 後に未解決 finding が残る場合、次 round の前にユーザーを待つ。
+- `--confirm`（デフォルト OFF）— triage と estimate の永続化後、respond 前に見積サマリーを示してユーザーの続行指示を待つ。
+- `--confirm-round`（デフォルト OFF）— 次 round を開始する前にユーザーの続行指示を待つ。
 - `--commit`（デフォルト OFF）— respond へ渡す。
 - `--incremental`（デフォルト OFF）— Round 2 以降は branch 全体ではなく、前 round 開始 revision から今 round 開始 revision までの commit range だけをレビューする。この option は `--commit` も有効にする。
 - `--adr`（デフォルト OFF）— triage または respond が永続的な設計判断の ADR をレビュードキュメントの隣に新規作成することを許可する。レビュードキュメントが参照する既存 ADR は、この option に関係なく読み込み、修正時に更新する。
@@ -51,11 +51,11 @@ root agent で 4 つの CReview phase skill を調整する。phase-leader agent
    - `--incremental` が ON の Round 2 以降: `prev_round_rev..this_round_rev` を使う。両 revision が同じなら新しい commit がないため round loop を終了する。
 3. 明示 output `{run-dir}/review-round{N}.md` と確定した base または range で `start` を実行する。
 4. そのドキュメントに `triage` を実行し、それ以前の全 round document path を過去 round context として渡す。
-5. `--confirm` 指定時は estimate summary を示し、Maintain または Alternative の修正前にユーザーを待つ。
-6. Maintain または Alternative target がある場合は ADR と commit option を渡して `respond` を実行する。無ければ飛ばす。
-7. `resolve` を実行する。Feedback が残る場合は、そのドキュメントに triage → respond → resolve を最大 3 回繰り返す。
-8. finding、decision、fix、verification 件数、workflow warning、`this_round_rev`、feedback attempt、`code_changed` を記録する。
-9. `code_changed` が true かつ現在の round number が `--max-rounds` 未満の場合だけ次 round へ進む。未解決 finding があり `--confirm-round` 指定時は先にユーザーを待つ。継続時は `prev_round_rev = this_round_rev` として round number を増やす。`--commit` は通常 mode の継続条件ではない。
+5. `--confirm` 指定時かつ Maintain または Alternative target がある場合は estimate summary を示し、修正前にユーザーの続行指示を待つ。
+6. Maintain または Alternative target がある場合は ADR と commit option を渡して `respond` を実行する。無ければ `respond` だけを飛ばす。Won't Fix と Downgrade も verification を受けるため、どちらの場合も次の `resolve` へ進む。
+7. `resolve` を実行する。Feedback が残る場合は、そのドキュメントに triage、必要な場合だけ respond、resolve を最大 3 回繰り返す。各 attempt の `resolve` は必ず実行する。
+8. finding、decision、fix、verification 件数、workflow warning、`this_round_rev`、feedback attempt を記録し、全 `respond` 戻り値の論理和を `code_changed` とする。`respond` を一度も実行しなかった場合は false とする。
+9. `code_changed` が true かつ現在の round number が `--max-rounds` 未満の場合だけ次 round へ進む。`--confirm-round` 指定時は次 round の開始前にユーザーの続行指示を待つ。継続時は `prev_round_rev = this_round_rev` として round number を増やす。`--commit` は通常 mode の継続条件ではない。
 
 ## 最終レポート
 

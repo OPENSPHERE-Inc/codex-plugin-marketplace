@@ -22,8 +22,8 @@ Accept an optional positional output base path. When omitted, use `.codex/tmp/` 
 
 Options:
 
-- `--confirm` (default OFF) — After triage and estimate are persisted, show the estimate summary and wait for the user before respond.
-- `--confirm-round` (default OFF) — After resolve, wait for the user before the next round when unresolved findings remain.
+- `--confirm` (default OFF) — After triage and estimate are persisted, show the estimate summary and wait for the user's instruction to continue before respond.
+- `--confirm-round` (default OFF) — Wait for the user's instruction to continue before starting the next round.
 - `--commit` (default OFF) — Forward to respond.
 - `--incremental` (default OFF) — From Round 2 onward, review only the committed range from the previous round's starting revision through the current round's starting revision instead of the whole branch. This option also enables `--commit`.
 - `--adr` (default OFF) — Allow triage or respond to create an ADR beside the review document for a durable design decision. Existing ADRs referenced by the review document are read and updated during fixes regardless of this option.
@@ -51,11 +51,11 @@ Write review documents and the final report in the user's language.
    - With `--incremental` ON from Round 2 onward, use `prev_round_rev..this_round_rev`. If the revisions are equal, stop the round loop because no new commit exists.
 3. Run `start` with explicit output `{run-dir}/review-round{N}.md` and the selected base or range.
 4. Run `triage` on that document, passing all earlier round-document paths as prior-round context.
-5. If `--confirm` is set, show the estimate summary and wait for the user before fixing Maintain or Alternative targets.
-6. When Maintain or Alternative targets exist, run `respond` with the ADR and commit options. Otherwise skip it.
-7. Run `resolve`. When Feedback remains, repeat triage → respond → resolve for that document up to three feedback attempts.
-8. Record findings, decisions, fixes, verification counts, workflow warnings, `this_round_rev`, feedback attempts, and `code_changed`.
-9. Start another round only when `code_changed` is true and the current round number is below `--max-rounds`. If unresolved findings remain and `--confirm-round` is set, wait for the user first. On continuation, set `prev_round_rev = this_round_rev` and increment the round number. `--commit` is not a continuation requirement in normal mode.
+5. If `--confirm` is set and Maintain or Alternative targets exist, show the estimate summary and wait for the user's instruction to continue before fixing them.
+6. When Maintain or Alternative targets exist, run `respond` with the ADR and commit options. Otherwise skip only `respond`. Won't Fix and Downgrade findings also require verification, so proceed to `resolve` in either case.
+7. Run `resolve`. When Feedback remains, repeat triage, respond only when needed, and resolve for that document up to three feedback attempts. Always run `resolve` in each attempt.
+8. Record findings, decisions, fixes, verification counts, workflow warnings, `this_round_rev`, and feedback attempts; set `code_changed` to the logical OR of all `respond` return values. Treat it as false when `respond` did not run.
+9. Start another round only when `code_changed` is true and the current round number is below `--max-rounds`. If `--confirm-round` is set, wait for the user's instruction to continue before starting the next round. On continuation, set `prev_round_rev = this_round_rev` and increment the round number. `--commit` is not a continuation requirement in normal mode.
 
 ## Final report
 
