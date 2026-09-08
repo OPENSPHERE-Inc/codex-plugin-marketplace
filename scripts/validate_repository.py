@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_NAMES = ("cprompt", "creview", "cdev")
 PLUGIN_VERSIONS = {
     "cprompt": "0.1.0",
-    "creview": "0.1.2",
+    "creview": "0.1.3",
     "cdev": "0.1.0",
 }
 MARKETPLACE_NAME = "opensphere-inc"
