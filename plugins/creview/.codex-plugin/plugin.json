@@ -1,6 +1,6 @@
 {
   "name": "creview",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Parallel code-review workflow for Codex: review, triage, respond, resolve, and multi-round orchestration.",
   "author": {
     "name": "OPENSPHERE Inc.",
