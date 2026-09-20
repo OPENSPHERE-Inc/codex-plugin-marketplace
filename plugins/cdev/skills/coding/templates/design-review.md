@@ -10,7 +10,7 @@ Task: `{{task}}`
 Design: `{{design_path}}`
 Output: `{{output_path}}`
 
-Judge task completeness, feasibility, interfaces/data shapes, edge cases, error handling, compatibility, testability, and regression risk. Write one JSON object:
+Read `{{plugin_root}}/rules/divergence.md` and apply its reviewer section to detect divergence patterns. Judge task completeness, feasibility, interfaces/data shapes, edge cases, error handling, compatibility, testability, and regression risk. Write one JSON object:
 
 ```json
 {"findings":[{"severity":"Critical|Major|Minor|Info","location":"section or file","issue":"...","fix_direction":"..."}],"critical":0,"major":0,"minor":0,"info":0}

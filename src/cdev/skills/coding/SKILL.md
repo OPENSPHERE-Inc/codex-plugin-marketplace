@@ -15,15 +15,18 @@ root team leader として振る舞う。作業を調整してgateを強制し�
 
 QA agentは移植先repositoryが宣言するcommandを実行する。信頼できるrepositoryでのみ実行し、network、credential、deployment、release権限を拡張しない。
 
-今回の変更を分離するため、開始前にcleanなGit working treeを要求する。`git status --porcelain`が空でなければ停止し、commit、stash、または別workflowの選択をユーザーへ求める。
-
 オプション:
 
 - `--review-rounds N` — producer/reviewer loop上限。デフォルト5、範囲1〜10。
 - `--qa-attempts N` — QA/fix loop上限。デフォルト5、範囲1〜10。
 - `--commit` — QA成功後、今回のsource pathだけをstageして簡潔なcommitを1つ作る。
+- `--output {dir}` — 実行後も残す設計書の出力先directory。
 
-`{timestamp}`を一度確定し、run artifactに`.codex/tmp/cdev-coding-{timestamp}/`を使う。設計とfindingの文章はユーザーの言語で書き、field nameとseverity labelは英語で維持する。
+`{timestamp}`を一度確定し、作業用の`{tmp_dir}`を`.codex/tmp/cdev-coding-{timestamp}/`とする。`{design_dir}`は`--output`の指定先、省略時は`.codex/tmp/cdev-coding-{timestamp}-design/`とする。相対パスは対象repositoryのrootから解決する。設計書専用のdirectoryを使い、repository root、sourceを含むdirectory、`{tmp_dir}`自身やその配下は指定不可とする。
+
+開始前に`git status --porcelain -uall`を確認し、`.codex/tmp/`と明示された`--output`の指定先配下を除外する。残りにstaged、unstaged、untrackedの変更があれば停止し、commit、stash、または別workflowの選択をユーザーへ求める。
+
+設計とfindingの文章はユーザーの言語で書き、field nameとseverity labelは英語で維持する。
 
 ## 常駐team
 
@@ -36,9 +39,9 @@ root leaderに加え、2つのpersistent childを使う:
 
 ## ワークフロー
 
-1. `{tmp_dir}/design`、`{tmp_dir}/reviews`、`{tmp_dir}/qa`を作る。
+1. `{design_dir}`、`{tmp_dir}/reviews`、`{tmp_dir}/qa`を作る。
 2. `templates/team-analysis.md`、期待ID `d8760930-8d32-42c1-b033-d61f0cbd19c7`、変数`plugin_root`、task、output path `{tmp_dir}/team.jsonl`、document languageでreviewerをspawnする。`../../rules/agents-detection.md`を適用し、自己完結したtask summaryとproducer/reviewer profileを記録し、件数とpathだけを返す。
-3. `team.jsonl`を読む。`templates/design.md`、期待ID `740fa1cf-fa38-40a0-85d0-4c9a99eab5de`、task summary、assigned scope、`{tmp_dir}/design/design.md`、feedbackなし、選定producer profileでproducerをspawnする。
+3. `team.jsonl`を読む。`templates/design.md`、期待ID `740fa1cf-fa38-40a0-85d0-4c9a99eab5de`、task summary、assigned scope、出力先`{design_dir}/design.md`、feedbackなし、選定producer profileでproducerをspawnする。以後のdesign review、改訂、codingではこのdesign pathを使う。
 4. idle reviewerへ`templates/design-review.md`、期待ID `448ee08a-0284-4066-9de9-9f82e9078914`、design path、task、出力`{tmp_dir}/reviews/design-{round}.jsonl`を`followup_task`する。actionable findingがあれば、producerへdesign templateとfinding pathをfollow upし、再reviewする。`--review-rounds`で停止する。未解決Criticalはcodingをblockし、未解決Majorは最終報告へ残す。
 5. `python "{plugin_root}/scripts/fetch_diff.py" snapshot {tmp_dir}/baseline-tree`でcoding前treeを記録する。
 6. producerへ`templates/code.md`、期待ID `278bf9bd-53e2-4695-ad40-3fb91374519a`、承認済みdesign、implementation scope、test-suite flag、feedbackなしをfollow upする。changed pathと短いsummaryを返させる。
@@ -48,7 +51,7 @@ root leaderに加え、2つのpersistent childを使う:
    - `python "{plugin_root}/scripts/fetch_diff.py" diff {tmp_dir}/baseline-tree {tmp_dir}/changes.txt`で今回のdiffを取得する。
    - `templates/qa.md`、同梱profile `../../references/agents/dev-helper.md`、期待ID `6a711cba-0da8-4177-a41f-ddb4cf2a6e1f`、temp path、diff path、attempt numberをreviewerへfollow upする。
    - 失敗時はproducerへcode template、`qa-result.jsonl`、`build.log`をfollow upし、comment review、code review、QAを繰り返す。
-10. QA成功かつ`--commit`指定時は、producerとformatterが返したchanged pathだけをstageし、`.codex/tmp`を除外してcommitを1つ作る。`git add -A`は使わない。
-11. 最終QA summaryとreview件数を保持し、`python "{plugin_root}/scripts/del_tmp.py" {tmp_dir}`で`{tmp_dir}`だけを削除する。
+10. QA成功かつ`--commit`指定時は、producerとformatterが返したchanged pathから`.codex/tmp/`と`{design_dir}`を除外し、そのpathだけをstageしてcommitを1つ作る。除外pathが既にstageされていてもcommitに含めず、そのstage状態を維持する。対象pathがなければcommitしない。`git add -A`は使わない。
+11. 最終QA summaryとreview件数を保持し、`python "{plugin_root}/scripts/del_tmp.py" "{tmp_dir}"`で`{tmp_dir}`だけを削除する。`{design_dir}`と設計書は残す。
 
-team task name、design/code review round、変更ファイル、未解決finding、QA結果とwarning、該当時のcommit hash、gateを停止したfailureを報告する。
+設計書のpath、team task name、design/code review round、変更ファイル、未解決finding、QA結果とwarning、該当時のcommit hash、gateを停止したfailureを報告する。

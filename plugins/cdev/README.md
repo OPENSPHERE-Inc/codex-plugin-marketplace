@@ -20,6 +20,14 @@ whether commits are allowed, and any files that must remain untouched.
   Default: 5; range: 1–10.
 - `--qa-attempts N` caps the QA/fix loop. Default: 5; range: 1–10.
 - `--commit` commits this run's changes after QA succeeds. Without it, no commit is made.
+- `--output {dir}` sets the design document directory, defaulting to
+  `.codex/tmp/cdev-coding-{timestamp}-design/`. Relative paths resolve from the destination
+  repository root. The repository root, directories containing source files, and the run's
+  disposable working directory or its descendants are not valid destinations.
+
+The design document `{design_dir}/design.md` is kept after the run, and the final report lists
+its path. The working directory `.codex/tmp/cdev-coding-{timestamp}/` is deleted after the run.
+`--commit` excludes `.codex/tmp/` and the design directory from staging.
 
 ## Workflow
 
@@ -35,10 +43,17 @@ The same two child agents are resumed for later phases, preserving context
 while leaving one collaboration slot available to the root workflow. If the
 runtime has fewer slots, work is queued.
 
+Design creation, revision, and review follow the [divergence prevention rule](rules/divergence.md).
+They address undecided specifications or invariants, problem classes that cannot be closed by
+individual case fixes, unadjudicated requirement conflicts, and mismatches with the existing design.
+The reviewer raises matches as Major or higher and does not raise counterexamples outside the
+design's stated accepted scope. It challenges the scope itself only if the task cannot be met within it.
+
 ## Safety and output
 
 - A clean Git worktree is required at the start so user changes are not
-  mistaken for workflow output.
+  mistaken for workflow output. This check excludes `.codex/tmp/` and the explicitly supplied
+  `--output` destination, so design documents from earlier runs do not block a new run.
 - Repository and user Codex agent profiles may inform role prompts; bundled
   reference profiles provide a fallback.
 - Intermediate files are written only below `.codex/tmp/`.

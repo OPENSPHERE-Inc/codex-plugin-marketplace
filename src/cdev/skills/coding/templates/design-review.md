@@ -10,7 +10,7 @@ Task: `{{task}}`
 Design: `{{design_path}}`
 Output: `{{output_path}}`
 
-task completeness、feasibility、interface/data shape、edge case、error handling、compatibility、testability、regression riskを判断する。JSON objectを1つ書く:
+`{{plugin_root}}/rules/divergence.md`を読み、reviewer節に従って発散パターンを検出する。task completeness、feasibility、interface/data shape、edge case、error handling、compatibility、testability、regression riskを判断する。JSON objectを1つ書く:
 
 ```json
 {"findings":[{"severity":"Critical|Major|Minor|Info","location":"section or file","issue":"...","fix_direction":"..."}],"critical":0,"major":0,"minor":0,"info":0}

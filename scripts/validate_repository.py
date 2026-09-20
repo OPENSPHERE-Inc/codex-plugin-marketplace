@@ -15,7 +15,7 @@ PLUGIN_NAMES = ("cprompt", "creview", "cdev")
 PLUGIN_VERSIONS = {
     "cprompt": "0.1.0",
     "creview": "0.2.0",
-    "cdev": "0.1.1",
+    "cdev": "0.1.2",
 }
 MARKETPLACE_NAME = "opensphere-inc"
 UUID_PATTERN = re.compile(
