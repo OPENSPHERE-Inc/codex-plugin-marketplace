@@ -15,15 +15,18 @@ Resolve `skill_dir` from this loaded file and `plugin_root` two levels above it.
 
 The QA agent executes commands declared by the destination repository. Run this workflow only in a trusted repository. Do not broaden network, credential, deployment, or release authority.
 
-Require a clean Git working tree before starting so this run's changes can be isolated. If `git status --porcelain` is non-empty, stop and ask the user to commit, stash, or choose another workflow.
-
 Options:
 
 - `--review-rounds N` — Producer/reviewer loop cap, default 5, range 1–10.
 - `--qa-attempts N` — QA/fix loop cap, default 5, range 1–10.
 - `--commit` — After QA passes, stage only this run's source paths and create one concise commit.
+- `--output {dir}` — Directory for design documents retained after the run.
 
-Fix `{timestamp}` once. Use `.codex/tmp/cdev-coding-{timestamp}/` for run artifacts. Write design and finding prose in the user's language; keep field names and severity labels in English.
+Fix `{timestamp}` once and set the working directory `{tmp_dir}` to `.codex/tmp/cdev-coding-{timestamp}/`. Set `{design_dir}` to `--output` when supplied, otherwise `.codex/tmp/cdev-coding-{timestamp}-design/`. Resolve relative paths from the destination repository root. Use a dedicated design directory; reject the repository root, directories containing source files, and `{tmp_dir}` itself or its descendants.
+
+Before starting, check `git status --porcelain -uall`, excluding entries under `.codex/tmp/` and the explicitly supplied `--output` destination. If any staged, unstaged, or untracked changes remain, stop and ask the user to commit, stash, or choose another workflow.
+
+Write design and finding prose in the user's language; keep field names and severity labels in English.
 
 ## Standing team
 
@@ -36,9 +39,9 @@ Spawn each task name once. A completed child is idle but retains context. Start 
 
 ## Workflow
 
-1. Create `{tmp_dir}/design`, `{tmp_dir}/reviews`, and `{tmp_dir}/qa`.
+1. Create `{design_dir}`, `{tmp_dir}/reviews`, and `{tmp_dir}/qa`.
 2. Spawn the reviewer with `templates/team-analysis.md`, expected ID `d8760930-8d32-42c1-b033-d61f0cbd19c7`, and variables `plugin_root`, task, output path `{tmp_dir}/team.jsonl`, and document language. It applies `../../rules/agents-detection.md`, writes a self-contained task summary plus producer/reviewer profile choices, and returns counts/path only.
-3. Read `team.jsonl`. Spawn the producer with `templates/design.md`, expected ID `740fa1cf-fa38-40a0-85d0-4c9a99eab5de`, the task summary, assigned scope, `{tmp_dir}/design/design.md`, no feedback, and the selected producer profile.
+3. Read `team.jsonl`. Spawn the producer with `templates/design.md`, expected ID `740fa1cf-fa38-40a0-85d0-4c9a99eab5de`, the task summary, assigned scope, output path `{design_dir}/design.md`, no feedback, and the selected producer profile. Use this design path for subsequent design review, revisions, and coding.
 4. Send the idle reviewer a `followup_task` using `templates/design-review.md`, expected ID `448ee08a-0284-4066-9de9-9f82e9078914`, design path, task, and output `{tmp_dir}/reviews/design-{round}.jsonl`. On actionable findings, follow up the producer with the design template plus that findings path, then re-review. Stop after `--review-rounds`; unresolved Critical findings block coding, while unresolved Major findings are recorded in the final report.
 5. Record the pre-coding tree with `python "{plugin_root}/scripts/fetch_diff.py" snapshot {tmp_dir}/baseline-tree`.
 6. Follow up the producer with `templates/code.md`, expected ID `278bf9bd-53e2-4695-ad40-3fb91374519a`, the approved design, implementation scope, test-suite flag, and no feedback. It returns changed paths and a short summary.
@@ -48,7 +51,7 @@ Spawn each task name once. A completed child is idle but retains context. Start 
    - Capture this run's diff with `python "{plugin_root}/scripts/fetch_diff.py" diff {tmp_dir}/baseline-tree {tmp_dir}/changes.txt`.
    - Follow up the reviewer with `templates/qa.md`, bundled profile `../../references/agents/dev-helper.md`, expected ID `6a711cba-0da8-4177-a41f-ddb4cf2a6e1f`, temp path, diff path, and attempt number.
    - On failure, follow up the producer with the code template, `qa-result.jsonl`, and `build.log`; then repeat comment review, code review, and QA.
-10. If QA passes and `--commit` is set, stage only changed paths returned by the producer and formatter, excluding `.codex/tmp`, then create one commit. Never use `git add -A`.
-11. Retain the final QA summary and review counts, then remove only `{tmp_dir}` with `python "{plugin_root}/scripts/del_tmp.py" {tmp_dir}`.
+10. If QA passes and `--commit` is set, exclude `.codex/tmp/` and `{design_dir}` from the changed paths returned by the producer and formatter, then stage and commit only the remaining paths in one commit. Keep already-staged excluded paths out of the commit without altering their staged state. Skip the commit if no eligible paths remain. Never use `git add -A`.
+11. Retain the final QA summary and review counts, then remove only `{tmp_dir}` with `python "{plugin_root}/scripts/del_tmp.py" "{tmp_dir}"`. Keep `{design_dir}` and its design documents.
 
-Report the team task names, design/code review rounds, changed files, unresolved findings, QA result and warning, commit hash when applicable, and any failure that stopped a gate.
+Report design document paths, team task names, design/code review rounds, changed files, unresolved findings, QA result and warning, commit hash when applicable, and any failure that stopped a gate.

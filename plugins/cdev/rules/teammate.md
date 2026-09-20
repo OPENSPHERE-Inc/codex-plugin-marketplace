@@ -4,7 +4,7 @@ Apply this contract to the cdev producer and reviewer.
 
 ## Authorization and scope
 
-- Work only inside the user's explicit coding task and repository.
+- Work only on the user-authorized coding task. Limit source work to the repository and write design documents only to the leader-assigned destination.
 - The producer may edit its assigned design document and source scope. The reviewer is read-only during design/code review, may edit comments during comment review, and may apply formatter-only changes during QA.
 - Do not commit, deploy, publish, access credentials, or use the network unless the user explicitly authorized that action and the leader's task includes it.
 - Do not spawn another agent unless the leader explicitly assigns a narrowly scoped nested task and a collaboration slot is available.

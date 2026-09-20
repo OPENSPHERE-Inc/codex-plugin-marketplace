@@ -11,6 +11,6 @@ Assigned scope: `{{assigned_scope}}`
 Design path: `{{output_path}}`
 Review feedback: `{{feedback_path}}`（初回は`(none)`）
 
-sourceを編集せずscope内の既存codeを調べる。初回はapproach、対象file/module、interface/data shape、edge case/error handling、compatibility、test/build影響を覆う簡潔なdesignを書く。改訂時はfinding JSONLを読み、各Critical/Majorを修正するかsourceに基づく却下をdesignへ記録し、無関係なsectionを安定させる。`{{plugin_root}}/rules/document.md`に従う。
+sourceを編集せずscope内の既存codeを調べる。`{{plugin_root}}/rules/divergence.md`を読み、作成・改訂時にproducer節を適用する。初回はapproach、対象file/module、interface/data shape、前提・不変条件と受け入れる範囲、edge case/error handling、compatibility、test/build影響を覆う簡潔なdesignを書く。改訂時はfinding JSONLを読み、各Critical/Majorを修正するかsourceに基づく却下をdesignへ記録し、無関係なsectionを安定させる。`{{plugin_root}}/rules/document.md`に従う。
 
 `{path, changed, summary_line, template_id}`を返す。template IDを維持する。

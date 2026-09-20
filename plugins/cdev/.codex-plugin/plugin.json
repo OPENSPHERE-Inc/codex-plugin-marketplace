@@ -1,6 +1,6 @@
 {
   "name": "cdev",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Explicit multi-agent software-development workflow for Codex with design, implementation, review, and QA gates.",
   "author": {
     "name": "OPENSPHERE Inc.",

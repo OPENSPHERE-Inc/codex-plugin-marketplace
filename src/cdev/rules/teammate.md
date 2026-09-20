@@ -4,7 +4,7 @@ cdevのproducerとreviewerへ適用する。
 
 ## 権限とscope
 
-- ユーザーが明示したcoding taskとrepository内だけで作業する。
+- ユーザーが明示したcoding taskだけを扱う。sourceの作業はrepository内に限定し、設計書はleaderが割り当てた出力先にだけ書く。
 - producerは割り当てられたdesign documentとsource scopeを編集できる。reviewerはdesign/code review中はread-only、comment reviewではcommentだけ、QAではformatterによる変更だけを行える。
 - ユーザーが明示的に許可しleader taskに含めない限り、commit、deploy、publish、credential access、network使用を行わない。
 - leaderが狭いnested taskを明示し空きcollaboration slotがある場合を除き、別agentをspawnしない。
