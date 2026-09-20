@@ -3,8 +3,7 @@
 *[English README](README.md)*
 
 `creview` は明示的に呼び出す、Codex 向けの段階的なマルチエージェント
-コードレビューワークフローです。Claude 固有のバックグラウンドタスクと
-`agent-sequencer` を Codex のコラボレーション操作へ置き換えています。
+コードレビューワークフローです。Codex のコラボレーション操作で各段階を実行します。
 
 ## スキル
 
@@ -28,7 +27,7 @@ $creview:rounds .codex/tmp --base origin/main --max-rounds 3
 - 任意の位置引数として出力ベースパスを指定でき、デフォルトは `.codex/tmp/` です。
 - `--confirm`、`--confirm-round`、`--commit`、`--incremental`、`--adr`、
   `--adversarial` はすべてデフォルト OFF です。
-- `--max-rounds N` はデフォルト 5、範囲 1〜10 です。
+- `--max-rounds N` はデフォルト 10、範囲 1〜20 です。
 - `--base {branch}` は省略時に存在する `main`、次に `master` を使います。
 - 以前の Codex 版が使っていた `--output-dir {path}` は、位置引数へ branch directory を
   加える代わりに、今回の run directory を直接指定します。
@@ -37,17 +36,22 @@ $creview:rounds .codex/tmp --base origin/main --max-rounds 3
 commit は不要です。`--incremental` は直前ラウンドが追加した commit だけをレビューし、
 同時に `--commit` も有効にします。
 
+Round 2 以降は triage の後、修正対象がある場合に発散ゲートを実行します。
+過去の修正が次の指摘を生む連鎖が3ラウンド以上にわたり縮小しない場合や、
+過去の修正を取り消す・相反する要求がある場合に発散と判定します。
+検出時は専門家が根本原因と修正案を `divergence-round{N}.md` にまとめ、
+`--confirm` に関係なく内容を提示して続行指示を待ちます。
+`--confirm` の見積確認も必要な場合は1回にまとめます。
+続行時に指定した修正方針は、そのラウンドのフィードバック再修正にも適用します。
+
 ## 実行モデル
 
 - ルートエージェントがワークフローリーダーを維持します。
 - 独立したレビュアーを Codex のコラボレーションツールで起動します。
 - 利用可能なスロット数を超える作業はキューに入れます。
 - 1回限りのレビュアーは構造化 JSONL を返し、再利用しません。
-- プロジェクトまたはユーザーの Codex エージェント設定からプロファイル情報を
-  検出でき、同梱の参照プロファイルをフォールバックに利用します。
-
-名前付き Claude サブエージェント型を仮定せず、外部 sequencer
-プラグインも必要としません。
+- レビュアーや発散調査担当は、プロジェクトまたはユーザーの Codex エージェント設定から
+  プロファイル情報を検出でき、同梱の参照プロファイルをフォールバックに利用します。
 
 ## 出力
 
@@ -55,6 +59,7 @@ commit は不要です。`--incremental` は直前ラウンドが追加した co
 `.codex/tmp/creview-start-{timestamp}.md` を作成します。`$creview:rounds` は
 `.codex/tmp/{branch-path}/review-round{N}.md` と `final-report.md` を作成し、
 同じ branch で再実行すると branch 名へ未使用の最小 `_N` suffix を付けます。
+発散を検出したラウンドの `divergence-round{N}.md` も同じディレクトリに保存します。
 明示的な output path または rounds base path を指定すれば、別の場所へ保存できます。
 
 一時プロンプト、JSONL 応答、差分データは `.codex/tmp/` 以下だけに置き、

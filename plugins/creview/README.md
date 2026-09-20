@@ -3,8 +3,7 @@
 *[日本語版 README](README_ja.md)*
 
 `creview` is an explicitly invoked, staged multi-agent code-review workflow
-for Codex. It replaces Claude-specific background tasks and
-`agent-sequencer` with Codex collaboration operations.
+for Codex. It runs each stage with Codex collaboration operations.
 
 ## Skills
 
@@ -28,7 +27,7 @@ version, with `.codex/` replacing `.claude/`:
 - An optional positional output base path; default `.codex/tmp/`.
 - `--confirm`, `--confirm-round`, `--commit`, `--incremental`, `--adr`, and
   `--adversarial`, all OFF by default.
-- `--max-rounds N`, default 5 with range 1–10.
+- `--max-rounds N`, default 10 with range 1–20.
 - `--base {branch}`, defaulting to an existing `main`, then `master`.
 - `--output-dir {path}` for earlier Codex calls; it selects the exact run
   directory instead of adding a branch directory to the positional base path.
@@ -37,25 +36,31 @@ Normal rounds re-review the whole branch diff, including working-tree changes,
 and do not require commits. `--incremental` reviews only the commits added by
 the preceding round and therefore also enables `--commit`.
 
+From Round 2 onward, a divergence gate runs after triage when fix targets exist.
+It detects chains where past fixes cause new findings without shrinking across
+at least three rounds, or demands to revert or contradict a past fix. When detected,
+a specialist writes the root causes and fix proposals to `divergence-round{N}.md`.
+The workflow presents that report and waits for an instruction to continue regardless
+of `--confirm`, combining it with estimate confirmation when both apply.
+A fix policy supplied with continuation also applies to that round's feedback fixes.
+
 ## Execution model
 
 - The root agent remains the workflow leader.
 - Independent reviewers are started with Codex collaboration tools.
 - Work beyond the available slot count is queued.
 - One-shot reviewers return structured JSONL and are not reused.
-- Reviewer profile metadata can be discovered from project or user Codex agent
-  configuration. Bundled reference profiles provide a fallback.
-
-The workflow never assumes a named Claude subagent type and does not require an
-external sequencer plugin.
+- Reviewer and divergence-investigator profiles can be discovered from project or
+  user Codex agent configuration. Bundled reference profiles provide a fallback.
 
 ## Output
 
 By default, `$creview:start` writes
 `.codex/tmp/creview-start-{timestamp}.md`. `$creview:rounds` writes
 `.codex/tmp/{branch-path}/review-round{N}.md` and `final-report.md`; repeat runs
-append the lowest unused `_N` suffix to the branch name. An explicit output
-path or rounds base path may place review documents elsewhere.
+append the lowest unused `_N` suffix to the branch name. Rounds with detected
+divergence also save `divergence-round{N}.md` in that directory. An explicit
+output path or rounds base path may place review documents elsewhere.
 
 Temporary prompts, JSONL responses, and diff artifacts stay below
 `.codex/tmp/`. The helper scripts reject temporary paths that escape the

@@ -29,3 +29,5 @@ description: 既存 CReview ドキュメントの指摘を敵対的にトリア�
 6. compile 成功を確認し、サマリーと件数を保持して `python "{plugin_root}/scripts/del_tmp.py" {tmp_dir}` で run directory を削除する。
 
 この phase では `status` や `verification` を追加しない。構造 label と絵文字を正確に維持する。件数、ドキュメントパス、ADR path、次の phase が `$creview:respond` であることを報告する。
+
+上位ワークフローへ `{document_path, will_fix_count, wontfix_count, flipped_count, maintain_count, alternative_count, downgrade_count, summary, error}` を返す。estimate 未実行時の件数は 0、成功時の `error` は null。`summary` は一時ディレクトリ削除前に保持した見積サマリー本文（見積なしなら空文字列）とし、削除済みファイルのパスを返さない。失敗時は `error` に理由を返す。

@@ -12,6 +12,7 @@ description: CReview triage が永続化した Maintain と Alternative の指�
 他の CReview スキルと同様に絶対 `skill_dir` と `plugin_root` を解決し、`../../rules/sub-agent.md` を読む。
 
 - 必須: レビュードキュメントのパス。
+- 上位ワークフローは round 固有 override（ユーザーの修正方針の原文と参照用 `report_path` を含む）を渡せる。全サブエージェントの起動メッセージにそのまま含める。参照レポートが指定されていれば、子は修正対象選定・修正前に読み、ユーザーが選んだ方針を適用する。方針なしにレポートの推奨案を採用しない。
 - `--adr` — 修正が永続的な設計判断を導入する場合、新しい ADR の作成を許可する。estimate metadata が参照する既存 ADR は、この option に関係なく読み込み、修正時に更新する。
 - `--commit` — 検証後、この phase が記録したファイルだけを stage して簡潔な commit を 1 つ作る。この option なしに commit 権限を推定しない。
 

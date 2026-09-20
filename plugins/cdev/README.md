@@ -16,6 +16,11 @@ leave the changes uncommitted.
 State important constraints in the request, including scope, required checks,
 whether commits are allowed, and any files that must remain untouched.
 
+- `--review-rounds N` caps each design or code producer/reviewer loop.
+  Default: 5; range: 1–10.
+- `--qa-attempts N` caps the QA/fix loop. Default: 5; range: 1–10.
+- `--commit` commits this run's changes after QA succeeds. Without it, no commit is made.
+
 ## Workflow
 
 1. Confirm repository instructions, task scope, and a clean starting worktree.

@@ -29,3 +29,5 @@ Fix `{timestamp}` once and create `.codex/tmp/creview-triage-{timestamp}/estimat
 6. Confirm the compile command succeeded, retain its summary and counts, and remove the run directory with `python "{plugin_root}/scripts/del_tmp.py" {tmp_dir}`.
 
 Never add `status` or `verification` in this phase. Preserve structural labels and emoji exactly. Report counts, the document path, any ADR paths, and that `$creview:respond` is the next phase.
+
+Return to a parent workflow `{document_path, will_fix_count, wontfix_count, flipped_count, maintain_count, alternative_count, downgrade_count, summary, error}`. Estimate counts are 0 when estimation did not run; `error` is null on success. `summary` contains the estimate summary text retained before temporary-directory cleanup (an empty string when no estimate exists), not a path to a deleted file. Return the failure reason in `error` on failure.

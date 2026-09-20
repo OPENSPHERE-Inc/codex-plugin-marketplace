@@ -12,6 +12,7 @@ Read decisions from the review document. Do not assume a temporary directory sha
 Resolve absolute `skill_dir` and `plugin_root` as in the other CReview skills and read `../../rules/sub-agent.md`.
 
 - Required: review document path.
+- A parent workflow may supply round-specific overrides, including the user's verbatim fix policy and reference `report_path`. Include them unchanged in every sub-agent launch message. When a report is referenced, children read it before target selection or fixes and apply the policy the user selected. Do not adopt its recommended proposal without a policy.
 - `--adr` — Allow creation of a new ADR when a fix introduces a durable design decision. Existing ADRs referenced by estimate metadata are read and updated during fixes regardless of this option.
 - `--commit` — After verification, stage only files recorded by this phase and create one concise commit. Never infer commit authorization without this option.
 
