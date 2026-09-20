@@ -19,7 +19,7 @@ QA agentは移植先repositoryが宣言するcommandを実行する。信頼で�
 
 オプション:
 
-- `--review-rounds N` — producer/reviewer loop上限。デフォルト2、範囲1〜5。
+- `--review-rounds N` — producer/reviewer loop上限。デフォルト5、範囲1〜10。
 - `--qa-attempts N` — QA/fix loop上限。デフォルト5、範囲1〜10。
 - `--commit` — QA成功後、今回のsource pathだけをstageして簡潔なcommitを1つ作る。
 

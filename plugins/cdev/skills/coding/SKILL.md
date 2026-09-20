@@ -19,7 +19,7 @@ Require a clean Git working tree before starting so this run's changes can be is
 
 Options:
 
-- `--review-rounds N` — Producer/reviewer loop cap, default 2, range 1–5.
+- `--review-rounds N` — Producer/reviewer loop cap, default 5, range 1–10.
 - `--qa-attempts N` — QA/fix loop cap, default 5, range 1–10.
 - `--commit` — After QA passes, stage only this run's source paths and create one concise commit.
 
