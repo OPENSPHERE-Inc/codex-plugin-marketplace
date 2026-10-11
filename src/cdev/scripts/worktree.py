@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -55,19 +56,26 @@ def create(branch: str) -> dict[str, str]:
         raise ValueError(f"invalid literal branch name: {branch}")
     parent = managed_parent(root)
     target = parent / branch.replace("/", "-")
-    if target.exists() or target.is_symlink():
-        raise ValueError(f"worktree path already exists: {target}")
-    existing = subprocess.run(
-        ["git", "-C", str(root), "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"],
-        check=False, env=git_environment(),
-    ).returncode == 0
+    if target in registered_worktrees(root):
+        raise ValueError(f"worktree path already registered: {target}")
+    parent.mkdir(parents=True, exist_ok=True)
     try:
+        target.mkdir()
+    except FileExistsError as error:
+        raise ValueError(f"worktree path already exists: {target}") from error
+    reservation = None
+    try:
+        reservation = target.lstat()
+        existing = subprocess.run(
+            ["git", "-C", str(root), "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"],
+            check=False, env=git_environment(),
+        ).returncode == 0
         if existing:
             git(root, "worktree", "add", "--quiet", "--", str(target), branch)
         else:
             git(root, "worktree", "add", "--quiet", "-b", branch, "--", str(target), "HEAD")
     except (OSError, ValueError) as error:
-        cleanup = cleanup_failed_create(root, target, branch)
+        cleanup = cleanup_failed_create(root, target, branch, reservation)
         raise ValueError(f"{error}; {cleanup}") from error
     return {"main_root": str(root), "worktree_path": str(target), "branch": branch}
 
@@ -80,21 +88,36 @@ def registered_worktrees(root: Path) -> set[Path]:
     }
 
 
-def cleanup_failed_create(root: Path, target: Path, branch: str) -> str:
+def cleanup_failed_create(
+    root: Path, target: Path, branch: str, reservation: os.stat_result | None = None,
+) -> str:
     location = f"{target} (branch {branch})"
     try:
         registered = registered_worktrees(root)
     except (OSError, ValueError) as error:
         return f"creation state unknown for {location}: {error}"
+    try:
+        current = target.lstat()
+    except FileNotFoundError:
+        if target not in registered:
+            return f"no worktree remains at {location}; branch was not deleted"
+        return f"retained registration {location}; reservation directory is missing"
+    except OSError as error:
+        return f"creation state unknown for {location}: {error}"
+    if (reservation is None or not reservation.st_ino or not stat.S_ISDIR(current.st_mode)
+            or not os.path.samestat(reservation, current) or target.resolve() != target):
+        return f"retained path {location}; reservation ownership could not be verified"
     if target in registered:
         try:
             remove(str(target))
         except (OSError, ValueError) as error:
             return f"retained worktree {location}: {error}"
         return f"removed partial worktree {location}; branch was not deleted"
-    if target.exists() or target.is_symlink():
-        return f"retained unregistered path {location}; automatic removal refused"
-    return f"no worktree remains at {location}; branch was not deleted"
+    try:
+        target.rmdir()
+    except OSError as error:
+        return f"retained unregistered path {location}; empty reservation removal failed: {error}"
+    return f"removed empty reservation {location}; branch was not deleted"
 
 
 def remove(raw: str) -> dict[str, str]:

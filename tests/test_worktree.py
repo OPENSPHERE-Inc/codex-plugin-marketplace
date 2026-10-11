@@ -6,9 +6,11 @@ import runpy
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from test_helpers import CDEV_SCRIPTS, CREVIEW_SCRIPTS, ROOT, git, init_repo, run
 
@@ -126,6 +128,169 @@ class WorktreeTests(unittest.TestCase):
         hook.write_text("#!/bin/sh\n" + body, encoding="utf-8", newline="\n")
         hook.chmod(0o755)
         return hook
+
+    def test_competing_creates_preserve_the_successful_worktree(self) -> None:
+        (self.repo / ".gitignore").write_text("ignored/\n")
+        git(self.repo, "add", ".gitignore")
+        git(self.repo, "commit", "-qm", "ignore build output")
+        for first_branch, second_branch in (("same", "same"), ("topic/one", "topic-one")):
+            with self.subTest(branches=(first_branch, second_branch)):
+                module = runpy.run_path(str(WORKTREE))
+                create = module["create"]
+                real_git = create.__globals__["git"]
+                before_add = threading.Event()
+                second_finished = threading.Event()
+                caller = threading.local()
+
+                def controlled_git(root, *args):
+                    if args[:2] == ("worktree", "add") and caller.first:
+                        before_add.set()
+                        if not second_finished.wait(10):
+                            raise AssertionError("second create did not finish")
+                    return real_git(root, *args)
+
+                def attempt(branch, first):
+                    caller.first = first
+                    try:
+                        result = create(branch)
+                        target = Path(result["worktree_path"])
+                        (target / "ignored").mkdir()
+                        (target / "ignored/keep").write_text("keep\n")
+                        return result
+                    except (OSError, ValueError) as error:
+                        return error
+                    finally:
+                        if not first:
+                            second_finished.set()
+
+                with patch.object(Path, "cwd", return_value=self.repo), patch.dict(
+                    create.__globals__, {"git": controlled_git},
+                ), ThreadPoolExecutor(max_workers=2) as executor:
+                    first = executor.submit(attempt, first_branch, True)
+                    self.assertTrue(before_add.wait(10), "first create did not reach Git add")
+                    second = executor.submit(attempt, second_branch, False)
+                    results = [first.result(timeout=15), second.result(timeout=15)]
+                successes = [result for result in results if isinstance(result, dict)]
+                self.assertEqual(len(successes), 1, results)
+                target = Path(successes[0]["worktree_path"])
+                self.assertTrue(target.is_dir(), results)
+                self.assertEqual((target / "tracked.txt").read_text(), "base\n")
+                self.assertEqual((target / "ignored/keep").read_text(), "keep\n")
+                self.assertIn(target, module["registered_worktrees"](self.repo))
+                self.helper("remove", str(target))
+
+    def test_failed_reservation_never_adds_or_cleans_another_path(self) -> None:
+        module = runpy.run_path(str(WORKTREE))
+        create = module["create"]
+        target = self.repo / ".codex/worktrees/reserved"
+        real_mkdir = Path.mkdir
+
+        def competing_mkdir(path, *args, **kwargs):
+            if path == target:
+                real_mkdir(path)
+                (path / "keep").write_text("keep\n")
+            return real_mkdir(path, *args, **kwargs)
+
+        with patch.object(Path, "cwd", return_value=self.repo), patch.object(
+            Path, "mkdir", competing_mkdir,
+        ), patch.dict(create.__globals__):
+            cleanup = Mock()
+            observed_git = Mock(wraps=create.__globals__["git"])
+            create.__globals__.update(git=observed_git, cleanup_failed_create=cleanup)
+            with self.assertRaises((OSError, ValueError)):
+                create("reserved")
+            cleanup.assert_not_called()
+            self.assertFalse(any(call.args[1:3] == ("worktree", "add")
+                                 for call in observed_git.call_args_list))
+        self.assertEqual((target / "keep").read_text(), "keep\n")
+
+    def test_stale_registration_is_rejected_before_add_or_cleanup(self) -> None:
+        target = self.create("stale")
+        moved = self.repo.parent / "moved-worktree"
+        target.rename(moved)
+        module = runpy.run_path(str(WORKTREE))
+        create = module["create"]
+        cleanup = Mock()
+        observed_git = Mock(wraps=create.__globals__["git"])
+        with patch.object(Path, "cwd", return_value=self.repo), patch.dict(
+            create.__globals__, {"git": observed_git, "cleanup_failed_create": cleanup},
+        ):
+            with self.assertRaises((OSError, ValueError)):
+                create("stale")
+        cleanup.assert_not_called()
+        self.assertFalse(any(call.args[1:3] == ("worktree", "add")
+                             for call in observed_git.call_args_list))
+        self.assertIn(target, module["registered_worktrees"](self.repo))
+        self.assertEqual((moved / "tracked.txt").read_text(), "base\n")
+
+    def test_cleanup_without_reservation_preserves_existing_registration(self) -> None:
+        target = self.create("existing")
+        module = runpy.run_path(str(WORKTREE))
+        with patch.object(Path, "cwd", return_value=self.repo):
+            result = module["cleanup_failed_create"](self.repo, target, "existing")
+        self.assertIn("retained", result)
+        self.assertIn(str(target), result)
+        self.assertIn(target, module["registered_worktrees"](self.repo))
+        self.assertEqual((target / "tracked.txt").read_text(), "base\n")
+
+    def test_failed_create_preserves_replaced_reservation(self) -> None:
+        for registered in (False, True):
+            with self.subTest(registered=registered):
+                branch = f"replacement-{registered}"
+                target = self.repo / ".codex/worktrees" / branch
+                moved = self.repo.parent / f"reserved-{registered}"
+                module = runpy.run_path(str(WORKTREE))
+                create = module["create"]
+                real_git = create.__globals__["git"]
+
+                def replace_reservation(root, *args):
+                    if args[:2] == ("worktree", "add"):
+                        target.rename(moved)
+                        if registered:
+                            real_git(root, *args)
+                        else:
+                            target.mkdir()
+                        raise ValueError("injected failure after target replacement")
+                    return real_git(root, *args)
+
+                with patch.object(Path, "cwd", return_value=self.repo), patch.dict(
+                    create.__globals__, {"git": replace_reservation},
+                ):
+                    with self.assertRaisesRegex(ValueError, "ownership") as raised:
+                        create(branch)
+                self.assertIn(str(target), str(raised.exception))
+                self.assertTrue(target.is_dir())
+                if registered:
+                    self.assertIn(target, module["registered_worktrees"](self.repo))
+                    self.assertEqual((target / "tracked.txt").read_text(), "base\n")
+                self.assertTrue(moved.is_dir())
+
+    def test_failure_before_add_releases_only_an_empty_owned_reservation(self) -> None:
+        for dirty in (False, True):
+            with self.subTest(dirty=dirty):
+                branch = f"before-add-{dirty}"
+                target = self.repo / ".codex/worktrees" / branch
+                module = runpy.run_path(str(WORKTREE))
+                create = module["create"]
+                real_run = subprocess.run
+
+                def fail_show_ref(command, **kwargs):
+                    if command[3:4] == ["show-ref"]:
+                        if dirty:
+                            (target / "keep").write_text("keep\n")
+                        raise OSError("injected failure before Git add")
+                    return real_run(command, **kwargs)
+
+                with patch.object(Path, "cwd", return_value=self.repo), patch.object(
+                    subprocess, "run", side_effect=fail_show_ref,
+                ):
+                    with self.assertRaisesRegex(ValueError, "injected failure") as raised:
+                        create(branch)
+                self.assertIn(str(target), str(raised.exception))
+                self.assertNotIn(target, module["registered_worktrees"](self.repo))
+                self.assertEqual(target.exists(), dirty)
+                if dirty:
+                    self.assertEqual((target / "keep").read_text(), "keep\n")
 
     def test_failed_checkout_hook_cleans_worktree_and_allows_retry(self) -> None:
         hook = self.checkout_hook("exit 1\n")
