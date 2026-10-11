@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import runpy
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from test_helpers import CDEV_SCRIPTS, CREVIEW_SCRIPTS, ROOT, git, init_repo, run
 
@@ -18,7 +20,7 @@ class WorktreeTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory(prefix="codex worktree ")
         self.addCleanup(self.temp.cleanup)
-        self.repo = Path(self.temp.name) / "main repo"
+        self.repo = Path(self.temp.name).resolve() / "main repo"
         self.repo.mkdir()
         init_repo(self.repo)
 
@@ -67,6 +69,49 @@ class WorktreeTests(unittest.TestCase):
         target = self.create("existing")
         self.assertEqual((target / "tracked.txt").read_text(), "existing tip\n")
 
+    def test_inherited_index_does_not_change_the_main_index(self) -> None:
+        (self.repo / "tracked.txt").write_text("staged\n")
+        git(self.repo, "add", "tracked.txt")
+        staged = git(self.repo, "diff", "--cached").stdout
+        index = self.repo / ".git/index"
+        index_bytes = index.read_bytes()
+        with patch.dict(os.environ, {"GIT_INDEX_FILE": str(index)}):
+            target = self.create()
+            self.helper("remove", str(target))
+        self.assertEqual(index.read_bytes(), index_bytes)
+        self.assertEqual(git(self.repo, "diff", "--cached").stdout, staged)
+        self.assertEqual((self.repo / "tracked.txt").read_text(), "staged\n")
+
+    def test_inherited_repository_environment_cannot_redirect_worktree_operations(self) -> None:
+        foreign = self.repo.parent / "foreign"
+        foreign.mkdir()
+        init_repo(foreign)
+        (foreign / "tracked.txt").write_text("foreign\n")
+        git(foreign, "commit", "-qam", "foreign")
+        before = git(foreign, "worktree", "list", "--porcelain").stdout
+        environments = (
+            {"GIT_DIR": str(foreign / ".git")},
+            {"GIT_DIR": str(foreign / ".git"), "GIT_WORK_TREE": str(foreign),
+             "GIT_COMMON_DIR": str(foreign / ".git")},
+            {"GIT_COMMON_DIR": str(foreign / ".git")},
+            {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.worktree",
+             "GIT_CONFIG_VALUE_0": str(foreign)},
+        )
+        for number, environment in enumerate(environments):
+            with self.subTest(environment=environment):
+                with patch.dict(os.environ, environment):
+                    target = self.create(f"isolated-{number}")
+                    self.assertEqual((target / "tracked.txt").read_text(), "base\n")
+                    self.helper("remove", str(target))
+                self.assertFalse(target.exists())
+                self.assertEqual(git(foreign, "worktree", "list", "--porcelain").stdout, before)
+                foreign_branch = run(
+                    ["git", "show-ref", "--verify", "--quiet", f"refs/heads/isolated-{number}"],
+                    cwd=foreign, check=False,
+                )
+                self.assertNotEqual(foreign_branch.returncode, 0)
+                self.assertEqual((foreign / "tracked.txt").read_text(), "foreign\n")
+
     def test_checked_out_branch_invalid_names_and_path_collisions_fail(self) -> None:
         current = git(self.repo, "branch", "--show-current").stdout.strip()
         for branch in (current, "", "-bad", "../escape", "with space", "@{-1}"):
@@ -75,6 +120,61 @@ class WorktreeTests(unittest.TestCase):
         self.create("topic/one")
         self.assertNotEqual(self.helper("create", "topic-one", check=False).returncode, 0)
         self.assertNotEqual(self.helper("create", "topic/one", check=False).returncode, 0)
+
+    def checkout_hook(self, body: str) -> Path:
+        hook = self.repo / ".git/hooks/post-checkout"
+        hook.write_text("#!/bin/sh\n" + body, encoding="utf-8", newline="\n")
+        hook.chmod(0o755)
+        return hook
+
+    def test_failed_checkout_hook_cleans_worktree_and_allows_retry(self) -> None:
+        hook = self.checkout_hook("exit 1\n")
+        (self.repo / "tracked.txt").write_text("staged\n")
+        git(self.repo, "add", "tracked.txt")
+        staged = git(self.repo, "diff", "--cached").stdout
+        target = self.repo / ".codex/worktrees/hook-failure"
+        failed = self.helper("create", "hook-failure", check=False)
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertIn("git worktree add", failed.stderr)
+        self.assertIn("exit 1", failed.stderr)
+        self.assertFalse(target.exists())
+        registered = {
+            Path(field[9:]).resolve()
+            for field in git(self.repo, "worktree", "list", "--porcelain", "-z").stdout.split("\0")
+            if field.startswith("worktree ")
+        }
+        self.assertNotIn(target.resolve(), registered)
+        git(self.repo, "show-ref", "--verify", "refs/heads/hook-failure")
+        self.assertEqual(git(self.repo, "diff", "--cached").stdout, staged)
+        hook.unlink()
+        recreated = self.create("hook-failure")
+        self.helper("remove", str(recreated))
+
+    def test_failed_checkout_hook_retains_dirty_or_locked_worktree(self) -> None:
+        for branch, body in (
+            ("dirty-hook", "printf 'keep\\n' > hook-data.txt\nexit 1\n"),
+            ("locked-hook", "git worktree lock .\nexit 1\n"),
+        ):
+            with self.subTest(branch=branch):
+                self.checkout_hook(body)
+                target = self.repo / ".codex/worktrees" / branch
+                failed = self.helper("create", branch, check=False)
+                self.assertNotEqual(failed.returncode, 0)
+                self.assertIn(str(target), failed.stderr)
+                self.assertIn(branch, failed.stderr)
+                self.assertIn("retained", failed.stderr)
+                self.assertTrue(target.is_dir())
+                listing = git(self.repo, "worktree", "list", "--porcelain", "-z").stdout
+                registered = {
+                    Path(field[9:]).resolve() for field in listing.split("\0")
+                    if field.startswith("worktree ")
+                }
+                self.assertIn(target.resolve(), registered)
+                git(self.repo, "show-ref", "--verify", f"refs/heads/{branch}")
+                if branch == "dirty-hook":
+                    self.assertEqual((target / "hook-data.txt").read_text(), "keep\n")
+                else:
+                    self.assertIn("locked", listing)
 
     def test_subdirectory_start_rejected(self) -> None:
         subdir = self.repo / "subdir"
@@ -114,6 +214,69 @@ class WorktreeTests(unittest.TestCase):
         self.symlink(outside, self.repo / ".codex", True)
         self.assertNotEqual(self.helper("create", "task", check=False).returncode, 0)
         self.assertEqual(list(outside.iterdir()), [])
+
+    def test_managed_parent_rejects_resolved_directory_redirects(self) -> None:
+        managed_parent = runpy.run_path(str(WORKTREE))["managed_parent"]
+        for relative in (".codex", ".codex/worktrees"):
+            for inside in (False, True):
+                with self.subTest(relative=relative, inside=inside):
+                    redirected = (self.repo if inside else self.repo.parent) / "redirected"
+                    redirected.mkdir(exist_ok=True)
+                    link = self.repo / relative
+                    link.parent.mkdir(exist_ok=True)
+                    self.symlink(redirected, link, True)
+                    try:
+                        with patch.object(Path, "is_symlink", return_value=False):
+                            with self.assertRaisesRegex(ValueError, "resolve"):
+                                managed_parent(self.repo)
+                    finally:
+                        link.unlink()
+
+    @unittest.skipUnless(os.name == "nt", "directory junctions require Windows")
+    def test_managed_directory_junctions_preserve_targets_and_registration(self) -> None:
+        for relative in (".codex", ".codex/worktrees"):
+            for inside in (False, True):
+                with self.subTest(relative=relative, inside=inside):
+                    name = f"redirect-{relative.count('/')}-{inside}"
+                    redirected = (self.repo if inside else self.repo.parent) / name
+                    redirected.mkdir()
+                    physical_parent = (
+                        redirected / "worktrees" if relative == ".codex" else redirected
+                    )
+                    target = physical_parent / "existing"
+                    git(self.repo, "worktree", "add", "-q", "-b", name, str(target))
+                    link = self.repo / relative
+                    link.parent.mkdir(exist_ok=True)
+                    junction = run(
+                        ["cmd", "/c", "mklink", "/J", str(link), str(redirected)],
+                        cwd=self.repo, check=False,
+                    )
+                    if junction.returncode:
+                        self.skipTest(f"directory junctions unavailable: {junction.stderr}")
+                    try:
+                        before = git(self.repo, "worktree", "list", "--porcelain", "-z").stdout
+                        contents = {path.relative_to(redirected): path.read_bytes()
+                                    for path in redirected.rglob("*") if path.is_file()}
+                        created = self.helper("create", f"new-{name}", check=False)
+                        self.assertNotEqual(created.returncode, 0)
+                        alias = self.repo / ".codex/worktrees/existing"
+                        for raw in (alias, target):
+                            removed = self.helper("remove", str(raw), check=False)
+                            self.assertNotEqual(removed.returncode, 0)
+                        self.assertEqual(
+                            git(self.repo, "worktree", "list", "--porcelain", "-z").stdout, before,
+                        )
+                        self.assertEqual(
+                            {path.relative_to(redirected): path.read_bytes()
+                             for path in redirected.rglob("*") if path.is_file()}, contents,
+                        )
+                        branch = run(
+                            ["git", "show-ref", "--verify", "--quiet", f"refs/heads/new-{name}"],
+                            cwd=self.repo, check=False,
+                        )
+                        self.assertNotEqual(branch.returncode, 0)
+                    finally:
+                        link.rmdir()
 
     def test_ignored_files_are_removed_with_clean_worktree(self) -> None:
         (self.repo / ".gitignore").write_text("ignored/\n")
@@ -180,6 +343,72 @@ class WorktreeTests(unittest.TestCase):
         run([sys.executable, str(CDEV_SCRIPTS / "del_tmp.py"), str(link)], cwd=target)
         self.assertFalse(link.exists())
         self.assertEqual(sentinel.read_text(), "keep")
+
+    def test_guard_rejects_reused_stale_worktree_registrations(self) -> None:
+        for reuse in ("foreign-repository", "ordinary-subdirectory"):
+            with self.subTest(reuse=reuse):
+                stale = self.create(reuse)
+                stale.rename(self.repo.parent / f"moved-{reuse}")
+                stale.mkdir()
+                if reuse == "foreign-repository":
+                    init_repo(stale)
+                listing = git(self.repo, "worktree", "list", "--porcelain", "-z").stdout
+                registered = {
+                    Path(field[9:]).resolve() for field in listing.split("\0")
+                    if field.startswith("worktree ")
+                }
+                self.assertIn(stale, registered)
+                scratch = stale / ".codex/tmp/run"
+                scratch.mkdir(parents=True)
+                sentinel = scratch / "keep"
+                sentinel.write_text("keep")
+                for scripts in (CDEV_SCRIPTS, CREVIEW_SCRIPTS):
+                    guard = scripts / "lib/scratch_guard.py"
+                    for mode in ([], ["-p"], ["-w"]):
+                        rejected = run(
+                            [sys.executable, str(guard), *mode, str(sentinel)],
+                            cwd=self.repo, check=False,
+                        )
+                        self.assertEqual(rejected.returncode, 1)
+                    deletion = run(
+                        [sys.executable, str(scripts / "del_tmp.py"), str(scratch)],
+                        cwd=self.repo, check=False,
+                    )
+                    self.assertEqual(deletion.returncode, 1)
+                    self.assertEqual(sentinel.read_text(), "keep")
+
+    def test_inherited_repository_environment_cannot_authorize_foreign_scratch(self) -> None:
+        target = self.create()
+        foreign = self.repo.parent / "foreign"
+        foreign.mkdir()
+        init_repo(foreign)
+        scratch = foreign / ".codex/tmp/run"
+        guard = CDEV_SCRIPTS / "lib/scratch_guard.py"
+        cleanup = CREVIEW_SCRIPTS / "del_tmp.py"
+        environments = (
+            {"GIT_DIR": str(foreign / ".git")},
+            {"GIT_DIR": str(foreign / ".git"), "GIT_WORK_TREE": str(foreign),
+             "GIT_COMMON_DIR": str(foreign / ".git")},
+            {"GIT_COMMON_DIR": str(foreign / ".git")},
+        )
+        for number, environment in enumerate(environments):
+            with self.subTest(environment=environment):
+                scratch.mkdir(parents=True, exist_ok=True)
+                sentinel = scratch / "keep"
+                sentinel.write_text("keep")
+                accepted = self.repo / f".codex/tmp/sibling-{number}"
+                accepted.mkdir(parents=True)
+                with patch.dict(os.environ, environment):
+                    rejected = run([sys.executable, str(guard), "-w", str(sentinel)],
+                                   cwd=target, check=False)
+                    deletion = run([sys.executable, str(cleanup), str(scratch)],
+                                   cwd=target, check=False)
+                    self.assertEqual(rejected.returncode, 1)
+                    self.assertEqual(deletion.returncode, 1)
+                    self.assertEqual(sentinel.read_text(), "keep")
+                    run([sys.executable, str(guard), "-w", str(accepted / "result")], cwd=target)
+                    run([sys.executable, str(cleanup), str(accepted)], cwd=target)
+                self.assertFalse(accepted.exists())
 
     def test_guard_rejects_symlinked_scratch_root(self) -> None:
         target = self.create()

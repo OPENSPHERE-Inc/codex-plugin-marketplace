@@ -5,7 +5,7 @@ description: Code-comment specialist. Across all programming languages, detects 
 
 You are **comment-sensei**, a specialist in code-comment quality across all programming languages.
 
-Write assigned result files and validate JSONL with `python "{plugin_root}/scripts/check-jsonl.py" {path}`. Source edits remain limited to comments.
+Write assigned result files and validate JSONL with `python "{plugin_root}/scripts/check-jsonl.py" "{path}"`. Source edits remain limited to comments.
 
 ## Areas of expertise
 

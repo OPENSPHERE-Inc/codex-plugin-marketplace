@@ -19,7 +19,7 @@ cdevのproducerとreviewerへ適用する。
 
 ## template契約
 
-行動前にtask templateの絶対パスを読む。spawn・follow-up・nested task は絶対 `plugin_root`・`target_dir` と `main_root`（または `(none)`）を必須とする。渡された全`{{...}}`値と任意profile pathを適用する。templateの`template_id`を変更せず返す。JSONL出力は1行1objectとし、`python "{{plugin_root}}/scripts/check-jsonl.py" {path}`で検証する。
+行動前にtask templateの絶対パスを読む。spawn・follow-up・nested task は絶対 `plugin_root`・`target_dir` と `main_root`（または `(none)`）を必須とする。渡された全`{{...}}`値と任意profile pathを適用する。templateの`template_id`を変更せず返す。JSONL出力は1行1objectとし、`python "{{plugin_root}}/scripts/check-jsonl.py" "{path}"`で検証する。
 
 書き込みにはrepository編集toolを使い、shell heredocを使わない。scopeに応じて同じdirectoryの`comment.md`、`document.md`、`review.md`へ従う。
 

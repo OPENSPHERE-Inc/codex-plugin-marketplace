@@ -34,7 +34,7 @@ Do not quote or paraphrase the template body in the launch message. If the retur
 
 - Use the available repository editing tool for file writes; do not construct shell heredocs.
 - A `.jsonl` output described as one object must contain exactly one JSON object on one line.
-- Validate JSONL with `python "{{plugin_root}}/scripts/check-jsonl.py" {path}` and fix any error before returning.
+- Validate JSONL with `python "{{plugin_root}}/scripts/check-jsonl.py" "{path}"` and fix any error before returning.
 - Preserve field names, structural Markdown anchors, finding IDs, severity labels, and emoji required by the template.
 
 ## Shared conventions

@@ -46,12 +46,12 @@ root leaderに加え、2つのpersistent childを使う:
 2. `templates/team-analysis.md`、期待ID `d8760930-8d32-42c1-b033-d61f0cbd19c7`、変数`plugin_root`、task、output path `{tmp_dir}/team.jsonl`、document languageでreviewerをspawnする。`../../rules/agents-detection.md`を適用し、自己完結したtask summaryとproducer/reviewer profileを記録し、件数とpathだけを返す。
 3. `team.jsonl`を読む。`templates/design.md`、期待ID `740fa1cf-fa38-40a0-85d0-4c9a99eab5de`、task summary、assigned scope、出力先`{design_dir}/design.md`、feedbackなし、選定producer profileでproducerをspawnする。以後のdesign review、改訂、codingではこのdesign pathを使う。
 4. idle reviewerへ`templates/design-review.md`、期待ID `448ee08a-0284-4066-9de9-9f82e9078914`、design path、task、出力`{tmp_dir}/reviews/design-{round}.jsonl`を`followup_task`する。actionable findingがあれば、producerへdesign templateとfinding pathをfollow upし、再reviewする。`--review-rounds`で停止する。未解決Criticalはcodingをblockし、未解決Majorは最終報告へ残す。
-5. `python "{plugin_root}/scripts/fetch_diff.py" snapshot {tmp_dir}/baseline-tree`でcoding前treeを記録する。
+5. `python "{plugin_root}/scripts/fetch_diff.py" snapshot "{tmp_dir}/baseline-tree"`でcoding前treeを記録する。
 6. producerへ`templates/code.md`、期待ID `278bf9bd-53e2-4695-ad40-3fb91374519a`、承認済みdesign、implementation scope、test-suite flag、feedbackなしをfollow upする。changed pathと短いsummaryを返させる。
 7. reviewerへ`templates/comment-review.md`、期待ID `8004286a-f4b2-4a6a-a3cb-9adc9ea370f2`、changed pathとdesignをfollow upする。commentだけを編集できる。
 8. reviewerへ`templates/code-review.md`、期待ID `4abf814d-2e3e-4bec-8ff8-45c9a176b01f`、changed path、design、出力`{tmp_dir}/reviews/code-{round}.jsonl`をfollow upする。actionable findingがあればproducerへcode templateとfinding pathをfollow upし、comment/code reviewを繰り返す。上限で未解決CriticalがあればQAをblockし、未解決Majorは可視化する。
 9. QAを`--qa-attempts`まで行う:
-   - `python "{plugin_root}/scripts/fetch_diff.py" diff {tmp_dir}/baseline-tree {tmp_dir}/changes.txt`で今回のdiffを取得する。
+   - `python "{plugin_root}/scripts/fetch_diff.py" diff "{tmp_dir}/baseline-tree" "{tmp_dir}/changes.txt"`で今回のdiffを取得する。
    - `templates/qa.md`、同梱profile `../../references/agents/dev-helper.md`、期待ID `6a711cba-0da8-4177-a41f-ddb4cf2a6e1f`、temp path、diff path、attempt numberをreviewerへfollow upする。
    - `success == false` かつ `environmental == true` なら、原因を warning として報告し、source fix・commit をせず QA loop を終了する。
    - `success == false` かつ `environmental == false` の場合だけproducerへcode template、`qa-result.jsonl`、`build.log`をfollow upし、comment review、code review、QAを繰り返す。

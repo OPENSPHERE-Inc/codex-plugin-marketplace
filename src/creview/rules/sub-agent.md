@@ -34,7 +34,7 @@ creview スキルが起動するすべてのサブエージェントに適用す
 
 - ファイル書き込みには利用可能なリポジトリ編集ツールを使い、shell heredoc を組み立てない。
 - 1 オブジェクトとして定義された `.jsonl` 出力は、1 行に JSON オブジェクトを正確に 1 個だけ置く。
-- `python "{{plugin_root}}/scripts/check-jsonl.py" {path}` で JSONL を検証し、エラーを修正してから返す。
+- `python "{{plugin_root}}/scripts/check-jsonl.py" "{path}"` で JSONL を検証し、エラーを修正してから返す。
 - テンプレートが要求するフィールド名、Markdown 構造アンカー、finding ID、severity label、絵文字を維持する。
 
 ## 共通規約

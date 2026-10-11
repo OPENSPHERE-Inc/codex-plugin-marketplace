@@ -14,6 +14,21 @@ from pathlib import Path
 SCRATCH_ROOT = Path(".codex/tmp")
 
 
+GIT_LOCAL_ENV_VARS = {
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_OBJECT_DIRECTORY", "GIT_DIR",
+    "GIT_WORK_TREE", "GIT_IMPLICIT_WORK_TREE", "GIT_GRAFT_FILE", "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS", "GIT_REPLACE_REF_BASE", "GIT_PREFIX",
+    "GIT_SHALLOW_FILE", "GIT_COMMON_DIR", "GIT_CONFIG",
+}
+
+
+def git_environment() -> dict[str, str]:
+    return {
+        key: value for key, value in os.environ.items()
+        if key.upper() not in GIT_LOCAL_ENV_VARS and not key.upper().startswith("GIT_CONFIG_")
+    }
+
+
 def fail(message):
     print(f"Error: {message}", file=sys.stderr)
     return 1
@@ -26,6 +41,16 @@ def to_windows_drive_path(raw):
     return raw
 
 
+def git_path(root, argument):
+    result = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", argument],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, env=git_environment(),
+    )
+    if result.returncode != 0 or not result.stdout:
+        return None
+    return (root / os.fsdecode(result.stdout.removesuffix(b"\n"))).resolve()
+
+
 def roots():
     yield Path.cwd()
     env_pwd = os.environ.get("PWD", "")
@@ -33,15 +58,20 @@ def roots():
         logical = Path(to_windows_drive_path(env_pwd))
         if logical.is_absolute() and logical.resolve() == Path.cwd():
             yield logical
+    common_dir = git_path(Path.cwd(), "--git-common-dir")
+    if common_dir is None:
+        return
     result = subprocess.run(
         ["git", "worktree", "list", "--porcelain", "-z"],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False,
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, env=git_environment(),
     )
     if result.returncode == 0:
         for field in result.stdout.split(b"\0"):
             if field.startswith(b"worktree "):
                 root = Path(os.fsdecode(field[9:]))
-                if root.is_dir():
+                if (root.is_dir()
+                        and git_path(root, "--show-toplevel") == root.resolve()
+                        and git_path(root, "--git-common-dir") == common_dir):
                     yield root
 
 

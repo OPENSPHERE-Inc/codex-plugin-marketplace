@@ -10,19 +10,40 @@ import sys
 from pathlib import Path
 
 
+GIT_LOCAL_ENV_VARS = {
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_OBJECT_DIRECTORY", "GIT_DIR",
+    "GIT_WORK_TREE", "GIT_IMPLICIT_WORK_TREE", "GIT_GRAFT_FILE", "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS", "GIT_REPLACE_REF_BASE", "GIT_PREFIX",
+    "GIT_SHALLOW_FILE", "GIT_COMMON_DIR", "GIT_CONFIG",
+}
+
+
+def git_environment() -> dict[str, str]:
+    return {
+        key: value for key, value in os.environ.items()
+        if key.upper() not in GIT_LOCAL_ENV_VARS and not key.upper().startswith("GIT_CONFIG_")
+    }
+
+
 def git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args], capture_output=True, check=False,
+        env=git_environment(),
     )
     if result.returncode:
-        raise ValueError(os.fsdecode(result.stderr).strip())
+        detail = os.fsdecode(result.stderr).strip()
+        message = f"git {' '.join(args)} failed (exit {result.returncode})"
+        raise ValueError(f"{message}: {detail}" if detail else message)
     return os.fsdecode(result.stdout).strip()
 
 
 def managed_parent(root: Path) -> Path:
-    parent = root / ".codex" / "worktrees"
-    if (root / ".codex").is_symlink() or parent.is_symlink():
+    codex = root.resolve() / ".codex"
+    parent = codex / "worktrees"
+    if codex.is_symlink() or parent.is_symlink():
         raise ValueError("managed worktree directories must not be symlinks")
+    if codex.resolve() != codex or parent.resolve() != parent:
+        raise ValueError("managed worktree directories must not resolve to another path")
     return parent
 
 
@@ -38,13 +59,42 @@ def create(branch: str) -> dict[str, str]:
         raise ValueError(f"worktree path already exists: {target}")
     existing = subprocess.run(
         ["git", "-C", str(root), "show-ref", "--verify", "--quiet", f"refs/heads/{branch}"],
-        check=False,
+        check=False, env=git_environment(),
     ).returncode == 0
-    if existing:
-        git(root, "worktree", "add", "--quiet", "--", str(target), branch)
-    else:
-        git(root, "worktree", "add", "--quiet", "-b", branch, "--", str(target), "HEAD")
+    try:
+        if existing:
+            git(root, "worktree", "add", "--quiet", "--", str(target), branch)
+        else:
+            git(root, "worktree", "add", "--quiet", "-b", branch, "--", str(target), "HEAD")
+    except (OSError, ValueError) as error:
+        cleanup = cleanup_failed_create(root, target, branch)
+        raise ValueError(f"{error}; {cleanup}") from error
     return {"main_root": str(root), "worktree_path": str(target), "branch": branch}
+
+
+def registered_worktrees(root: Path) -> set[Path]:
+    return {
+        Path(item[9:]).resolve()
+        for item in git(root, "worktree", "list", "--porcelain", "-z").split("\0")
+        if item.startswith("worktree ")
+    }
+
+
+def cleanup_failed_create(root: Path, target: Path, branch: str) -> str:
+    location = f"{target} (branch {branch})"
+    try:
+        registered = registered_worktrees(root)
+    except (OSError, ValueError) as error:
+        return f"creation state unknown for {location}: {error}"
+    if target in registered:
+        try:
+            remove(str(target))
+        except (OSError, ValueError) as error:
+            return f"retained worktree {location}: {error}"
+        return f"removed partial worktree {location}; branch was not deleted"
+    if target.exists() or target.is_symlink():
+        return f"retained unregistered path {location}; automatic removal refused"
+    return f"no worktree remains at {location}; branch was not deleted"
 
 
 def remove(raw: str) -> dict[str, str]:
@@ -56,11 +106,7 @@ def remove(raw: str) -> dict[str, str]:
     target = target.resolve()
     if target.parent != parent or not target.is_dir():
         raise ValueError(f"not a managed worktree below {parent}: {target}")
-    registered = {
-        Path(item[9:]).resolve()
-        for item in git(root, "worktree", "list", "--porcelain", "-z").split("\0")
-        if item.startswith("worktree ")
-    }
+    registered = registered_worktrees(root)
     if target not in registered:
         raise ValueError(f"not a registered worktree: {target}")
     git(root, "worktree", "remove", "--", str(target))

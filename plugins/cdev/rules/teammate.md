@@ -19,7 +19,7 @@ Apply this contract to the cdev producer and reviewer.
 
 ## Template contract
 
-Read the absolute task-template path before acting. Require absolute `plugin_root` and `target_dir`, plus `main_root` (or `(none)`), in spawns, follow-ups, and nested tasks. Apply every supplied `{{...}}` value and the optional profile path. Return the template's `template_id` unchanged. On a JSONL output, write one JSON object on one line and validate it with `python "{{plugin_root}}/scripts/check-jsonl.py" {path}`.
+Read the absolute task-template path before acting. Require absolute `plugin_root` and `target_dir`, plus `main_root` (or `(none)`), in spawns, follow-ups, and nested tasks. Apply every supplied `{{...}}` value and the optional profile path. Return the template's `template_id` unchanged. On a JSONL output, write one JSON object on one line and validate it with `python "{{plugin_root}}/scripts/check-jsonl.py" "{path}"`.
 
 Use repository editing tools for writes, not shell heredocs. Follow `comment.md`, `document.md`, and `review.md` beside this file when their scopes apply.
 

@@ -31,9 +31,11 @@ Codex skills replace Claude-style slash-command files. When asked to create or m
 
 Resolve absolute `plugin_root` two levels above this skill and fix `timestamp` once as `YYYYMMDD-HHMMSS`.
 
-With `--commit` (including when enabled by `--worktree`), before editing or creating a worktree run `git status --porcelain -- {target}` in the invocation checkout for an in-repository target. Stop with an error if it has uncommitted changes.
+Pass `target` and each dynamic argument as separate argument-array elements. When a shell command is required, quote and escape each value for that shell; do not interpolate raw values into the examples' quotes.
 
-With `--worktree`, require invocation from the repository root and a repository-relative target without `..` components; reject absolute targets. Before creation, run `git check-ignore -q -- {target}`: exit 0 rejects an ignored target, exit 1 continues, and any other exit stops with an invalid-repository-path error. Then apply initialization and execution from `../../rules/worktree.md`. If an edit target is absent under `target_dir`, report it and perform completion without editing the original checkout's copy.
+With `--commit` (including when enabled by `--worktree`), before editing or creating a worktree run `git --literal-pathspecs status --porcelain -- "{target}"` in the invocation checkout for an in-repository target. Stop with an error if it has uncommitted changes.
+
+With `--worktree`, require invocation from the repository root and a repository-relative target without `..` components; reject absolute targets. Before creation, run `git check-ignore -q -- "{target}"`: exit 0 rejects an ignored target, exit 1 continues, and any other exit stops with an invalid-repository-path error. Then apply initialization and execution from `../../rules/worktree.md`. If an edit target is absent under `target_dir`, report it and perform completion without editing the original checkout's copy.
 
 Without `--worktree`, resolve relative targets against the invocation working directory.
 
@@ -53,7 +55,7 @@ Without `--worktree`, resolve relative targets against the invocation working di
 4. Compress the result. Remove politeness, repetition, self-evident instructions, effect-restating explanations, and examples that do not change behavior. Retain decision criteria, safety boundaries, authorization requirements, fallbacks, and input/output contracts.
 5. Build an interpretation checklist covering inputs, branch conditions, failure paths, side effects, and output. Reread only the produced prompt and answer the checklist from its text. Fix any unclear item and repeat, up to three passes.
 6. Validate a created or substantially changed Codex skill with the available `quick_validate.py` from `skill-creator`. If it is unavailable, verify the YAML frontmatter, folder/name match, and absence of unfinished placeholders manually.
-7. If validation succeeds and `--commit` is set, stage only this run's changed paths and use a path-limited `git commit -- {paths}`. Exclude files outside the repository, Git-ignored files, `.codex/tmp/`, `.codex/worktrees/`, and unrelated pre-existing changes; preserve their staged state. Never use `git add -A`; skip the commit when no eligible changes remain.
+7. If validation succeeds and `--commit` is set, stage only this run's changed paths with `git --literal-pathspecs add -- {paths}` and use a path-limited `git --literal-pathspecs commit -- {paths}`. Expand `{paths}` into one argument per path, never a single concatenated string. Exclude files outside the repository, Git-ignored files, `.codex/tmp/`, `.codex/worktrees/`, and unrelated pre-existing changes; preserve their staged state. Never use `git add -A`; skip the commit when no eligible changes remain.
 8. If a worktree was created, apply the completion contract in `../../rules/worktree.md`, including on early termination. If this run leaves created or edited ignored files, retain the worktree without removal and report those files. Report the branch, commits, and any retained worktree path.
 
 Do not spawn a test agent unless the user explicitly requested delegation or an independent agent evaluation. When such delegation is authorized and available, give the evaluator the target prompt and checklist but not the intended answers.
