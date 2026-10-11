@@ -5,6 +5,22 @@
 This repository distributes the `cprompt`, `creview`, and `cdev` Codex
 plugins through `.agents/plugins/marketplace.json`.
 
+## Codex Instructions
+
+Before starting each type of work below, read and follow the linked instructions.
+These files are not loaded automatically. Resolve the links relative to this
+AGENTS.md and apply all instruction files relevant to the task.
+
+- [Development](.codex/instructions/development.md): code changes, tests,
+  completion checks, and formatting.
+- [Comments](.codex/instructions/comment.md): code comments and deferred fixes.
+- [Prompts](.codex/instructions/prompt.md): AI-facing skills, templates, rules,
+  agent definitions, and AGENTS.md.
+- [Documentation](.codex/instructions/document.md): human-facing README files,
+  API references, and design documents.
+- [Review](.codex/instructions/review.md): code review findings and severity.
+- [Commits](.codex/instructions/commit.md): commit messages and trailers.
+
 ## Source and distribution policy
 
 - `src/<plugin>/` is the Japanese source of truth.
