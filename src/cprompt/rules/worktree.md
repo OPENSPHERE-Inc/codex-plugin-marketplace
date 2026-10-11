@@ -7,7 +7,8 @@
 - 上位から `target_dir` と `main_root` が渡された場合は維持し、別 worktree を作らない。
 - それ以外では Git repository root からの起動を必須とする。`git rev-parse --show-prefix` が空でなければ書き込み前にエラーで停止する。`git rev-parse --show-toplevel` の絶対パスを `target_dir` とし、`main_root = (none)` とする。
 - `--worktree[=branch]` 指定時は `--commit` を有効にする。`=branch` 省略時は `{skill-name}-{timestamp}` とし、`skill-name` は `cdev-coding`、`creview-rounds`、`cprompt-edit` のいずれか。明示された空の branch は拒否する。
-- 上位から作業先を引き継がず、`--worktree` を指定した場合だけ、起動元 root で `python "{plugin_root}/scripts/worktree.py" create "{branch}"` を実行する。JSON `{main_root, worktree_path, branch}` を読み、`target_dir = worktree_path` としてこの worktree の管理元になる。作成失敗時、helper は登録済み target の通常削除を試み、残った path を絶対パスと理由付きで診断する。失敗時は保持された worktree のパス・branch・理由を報告して停止し、元 checkout の編集へ切り替えない。既存 local branch はその tip、未作成 branch は HEAD から開始する。別 checkout で使用中の branch は拒否される。
+- 上位から作業先を引き継がず、`--worktree` を指定した場合だけ、起動元 root で `python "{plugin_root}/scripts/worktree.py" create "{branch}"` を実行する。JSON `{main_root, worktree_path, branch}` を読み、`target_dir = worktree_path` としてこの worktree の管理元になる。既存 local branch はその tip、未作成 branch は HEAD から開始する。別 checkout で使用中の branch は拒否される。
+- 作成失敗時、helper は登録の帰属を証明できないため、clean な hook 失敗も含め登録済み target を保持する。未登録で予約の同一性を確認できる空ディレクトリだけを `rmdir()` で回収する。失敗したコマンド、保持先の絶対パス、要求 branch、保持理由を報告して停止し、元 checkout の編集へ切り替えない。要求 branch を実際の登録 branch とみなさない。再試行前に原因を解消し、保持先を確認して明示的に通常削除する。強制削除や保持先の無条件な自動削除は行わない。
 - `main_root` が `(none)` でなければ `metadata_root = main_root`、それ以外は `target_dir` とする。skill の一時パスと相対の文書・出力先は `metadata_root` 基準で解決し、使用前に絶対パスへ変換する。worktree 使用時はその中の永続出力先を拒否する。
 
 ## 実行と委譲

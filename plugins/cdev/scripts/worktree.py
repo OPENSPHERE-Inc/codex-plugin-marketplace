@@ -91,28 +91,22 @@ def registered_worktrees(root: Path) -> set[Path]:
 def cleanup_failed_create(
     root: Path, target: Path, branch: str, reservation: os.stat_result | None = None,
 ) -> str:
-    location = f"{target} (branch {branch})"
+    location = f"{target} (requested branch {branch})"
     try:
         registered = registered_worktrees(root)
     except (OSError, ValueError) as error:
         return f"creation state unknown for {location}: {error}"
+    if target in registered:
+        return f"retained worktree {location}; registration ownership could not be verified"
     try:
         current = target.lstat()
     except FileNotFoundError:
-        if target not in registered:
-            return f"no worktree remains at {location}; branch was not deleted"
-        return f"retained registration {location}; reservation directory is missing"
+        return f"no worktree remains at {location}; branch was not deleted"
     except OSError as error:
         return f"creation state unknown for {location}: {error}"
     if (reservation is None or not reservation.st_ino or not stat.S_ISDIR(current.st_mode)
             or not os.path.samestat(reservation, current) or target.resolve() != target):
         return f"retained path {location}; reservation ownership could not be verified"
-    if target in registered:
-        try:
-            remove(str(target))
-        except (OSError, ValueError) as error:
-            return f"retained worktree {location}: {error}"
-        return f"removed partial worktree {location}; branch was not deleted"
     try:
         target.rmdir()
     except OSError as error:

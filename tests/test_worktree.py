@@ -265,6 +265,46 @@ class WorktreeTests(unittest.TestCase):
                     self.assertEqual((target / "tracked.txt").read_text(), "base\n")
                 self.assertTrue(moved.is_dir())
 
+    def test_failed_create_preserves_external_registration_in_reserved_directory(self) -> None:
+        (self.repo / ".gitignore").write_text("ignored/\n")
+        git(self.repo, "add", ".gitignore")
+        git(self.repo, "commit", "-qm", "ignore build output")
+        for plugin in ("cprompt", "creview", "cdev"):
+            for same_branch in (False, True):
+                with self.subTest(plugin=plugin, same_branch=same_branch):
+                    branch = f"reserved-{plugin}-{same_branch}"
+                    foreign_branch = branch if same_branch else f"foreign-{plugin}"
+                    target = self.repo / ".codex/worktrees" / branch
+                    module = runpy.run_path(str(ROOT / "plugins" / plugin / "scripts/worktree.py"))
+                    create = module["create"]
+                    real_git = create.__globals__["git"]
+
+                    def register_external_worktree(root, *args):
+                        if args[:2] == ("worktree", "add"):
+                            reservation = target.stat()
+                            real_git(root, "worktree", "add", "--quiet", "-b", foreign_branch,
+                                     "--", str(target), "HEAD")
+                            self.assertTrue(os.path.samestat(reservation, target.stat()))
+                            (target / "ignored").mkdir()
+                            (target / "ignored/keep").write_text("keep\n")
+                        return real_git(root, *args)
+
+                    with patch.object(Path, "cwd", return_value=self.repo), patch.dict(
+                        create.__globals__, {"git": register_external_worktree},
+                    ):
+                        with self.assertRaises(ValueError) as raised:
+                            create(branch)
+                    diagnostic = str(raised.exception)
+                    self.assertIn(target, module["registered_worktrees"](self.repo))
+                    self.assertEqual((target / "tracked.txt").read_text(), "base\n")
+                    self.assertEqual((target / "ignored/keep").read_text(), "keep\n")
+                    self.assertEqual(git(target, "branch", "--show-current").stdout.strip(),
+                                     foreign_branch)
+                    self.assertIn("git worktree add", diagnostic)
+                    self.assertIn(str(target), diagnostic)
+                    self.assertIn(f"requested branch {branch}", diagnostic)
+                    self.assertIn("registration ownership could not be verified", diagnostic)
+
     def test_failure_before_add_releases_only_an_empty_owned_reservation(self) -> None:
         for dirty in (False, True):
             with self.subTest(dirty=dirty):
@@ -292,7 +332,7 @@ class WorktreeTests(unittest.TestCase):
                 if dirty:
                     self.assertEqual((target / "keep").read_text(), "keep\n")
 
-    def test_failed_checkout_hook_cleans_worktree_and_allows_retry(self) -> None:
+    def test_failed_checkout_hook_retains_worktree_until_explicit_removal(self) -> None:
         hook = self.checkout_hook("exit 1\n")
         (self.repo / "tracked.txt").write_text("staged\n")
         git(self.repo, "add", "tracked.txt")
@@ -302,16 +342,23 @@ class WorktreeTests(unittest.TestCase):
         self.assertNotEqual(failed.returncode, 0)
         self.assertIn("git worktree add", failed.stderr)
         self.assertIn("exit 1", failed.stderr)
-        self.assertFalse(target.exists())
+        self.assertIn(str(target), failed.stderr)
+        self.assertIn("requested branch hook-failure", failed.stderr)
+        self.assertIn("registration ownership could not be verified", failed.stderr)
+        self.assertTrue(target.is_dir())
+        self.assertEqual((target / "tracked.txt").read_text(), "base\n")
         registered = {
             Path(field[9:]).resolve()
             for field in git(self.repo, "worktree", "list", "--porcelain", "-z").stdout.split("\0")
             if field.startswith("worktree ")
         }
-        self.assertNotIn(target.resolve(), registered)
+        self.assertIn(target.resolve(), registered)
         git(self.repo, "show-ref", "--verify", "refs/heads/hook-failure")
         self.assertEqual(git(self.repo, "diff", "--cached").stdout, staged)
         hook.unlink()
+        self.helper("remove", str(target))
+        self.assertFalse(target.exists())
+        git(self.repo, "show-ref", "--verify", "refs/heads/hook-failure")
         recreated = self.create("hook-failure")
         self.helper("remove", str(recreated))
 
