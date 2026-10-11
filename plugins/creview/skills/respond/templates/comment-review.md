@@ -26,9 +26,10 @@ Review the comments changed by the fix sub-agents (Step 2) in each file against 
 
 ## Return value
 
-`{reviewed_paths, fix_count, template_id}`
+`{reviewed_paths, changed_files, fix_count, template_id}`
 
 - `reviewed_paths`: file paths reviewed because added or modified comments were detected (may be empty)
+- `changed_files`: source paths actually modified, relative to `{{target_dir}}` (may be empty)
 - `fix_count`: number of comments fixed, counting the annotations deleted in Step 4 (0 means no comment fixes were applied)
 
 Include `template_id` (Read from this template's frontmatter) verbatim in the return value.

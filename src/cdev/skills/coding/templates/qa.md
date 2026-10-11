@@ -9,7 +9,7 @@ template_id: 6a711cba-0da8-4177-a41f-ddb4cf2a6e1f
 Run directory: `{{tmp_dir}}`
 Attempt: `{{attempt_num}}`
 
-repositoryの信頼済みformat/build/test commandを解決する。各commandをrepository rootから個別に実行し、shell separatorやpipeで合成しない。関連outputを`{{tmp_dir}}/build.log`へ記録する。source変更はformatter auto-fixだけに限定する。
+repositoryの信頼済みformat/build/test commandを解決する。各 command は明示 `workdir = {{target_dir}}` で個別に実行し、shell separatorやpipeで合成しない。関連outputを`{{tmp_dir}}/build.log`へ記録する。source変更はformatter auto-fixだけに限定する。
 
 diffがstageへ影響しない場合だけskipする。workflow未宣言ならread-onlyのvisual syntax/symbol checkを行い、`.codex/rules/build-format.md`を推奨するwarningを設定する。
 
@@ -21,4 +21,6 @@ diffがstageへ影響しない場合だけskipする。workflow未宣言ならre
 {"workflow_source":"build-format.md|AGENTS.md|README.md|none","workflow_warning":null,"format":{"format_violations_fixed":0},"build":{"ran":true,"success":true},"test":{"ran":true,"success":true},"failure":null}
 ```
 
-失敗時の`failure`は`{stage, error_summary, error_files, suggested_profile: {name, profile_path}|null, fix_guidance, log_path}`。fileを検証し、`{path, success, summary_line, workflow_warning, template_id}`を返す。
+失敗時の`failure`は`{stage, error_summary, error_files, suggested_profile: {name, profile_path}|null, fix_guidance, environmental, log_path}`。fileを検証し、`{path, success, environmental, changed_files, summary_line, workflow_warning, template_id}`を返す。
+
+`environmental` は build-format 検出ルールの判定値（成功時 false）。`changed_files` は formatter が変更した source path を `{{target_dir}}` 基準で返す。`failure.error_files` も同じ基準、`tmp_dir` と `diff_path` は渡された絶対パスを維持する。

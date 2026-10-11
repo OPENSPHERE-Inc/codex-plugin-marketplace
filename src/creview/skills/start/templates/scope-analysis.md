@@ -19,4 +19,6 @@ template_id: b3e2f1a7-9c84-4d56-8e3b-7f1a4c9d2e85
 
 各スコープに specialist-profile 検出ルールを適用する。実質的に関連する各 profile を `{name, profile_path, reason}` として追加する。該当が無ければ `{name: "general", profile_path: null, reason: "no matching specialist profile"}` を 1 つ使う。ユーザー指定レビュアーは重複しない限り全スコープへ追加し、可能なら profile path を解決する。
 
+選定 profile がすべて変更コードの挙動より狭い観点（comment だけ等）なら、profile path なしの `general` reviewer を1つ追加する。既存の general reviewer と重複させない。
+
 `{line_count, scopes: [{scope_id, paths, line_count, reviewers: [{name, profile_path, reason}]}], extension_summary, rationale, template_id}` を返す。frontmatter の `template_id` を変更せず返す。

@@ -8,7 +8,7 @@ As the format / build / test verification owner, run the destination project's f
 
 Inputs: working directory `{{tmp_dir}}`, fix diff `{{diff_path}}` (`fetch_diff.py` output; the current fixes), attempt number `{{attempt_num}}` (informational only).
 
-The command execution CWD is assumed to be the project root. Do not use absolute paths; use relative paths only. Do not use `tee` / `Tee-Object` through a pipe, and do not use compound commands (`;` / `&&`) (the Bash tool returns the exit code automatically).
+Explicitly set command `workdir` to `{{target_dir}}`. Preserve the supplied absolute `tmp_dir` and `diff_path`; record source paths and `failure.error_files` relative to `{{target_dir}}`. Do not use `tee` / `Tee-Object` through a pipe, and do not use compound commands (`;` / `&&`) (the Bash tool returns the exit code automatically).
 
 Procedure:
 
@@ -50,8 +50,10 @@ Procedure:
   "format": {changed_files: [...], format_violations_fixed: <int>, format_violations_remaining: <int>},
   "build": {ran: <bool>, success: <bool>},
   "test": {ran: <bool>, success: <bool>},
-  "failure": {stage: "build | test | visual", log_path, error_summary | null, error_files: ["src/foo.cpp:42", ...] | null, suggested_specialist | null, fix_guidance | null} | null
+  "failure": {stage: "build | test | visual", log_path, error_summary | null, error_files: ["src/foo.cpp:42", ...] | null, suggested_specialist | null, fix_guidance | null, environmental: <bool>} | null
 }
 ```
 
-Return value: `{path, success, format_violations_fixed, workflow_source, workflow_warning, summary_line (<=200 chars, e.g. "build-format.md / format ok / build ok / test ok" or "build-format.md / format ok / build skipped (comments only) / test skipped" or "none / visual-only: no workflow declared"), template_id}`. `success` is `failure == null`. For a stage that did not run (`ran = false`), its `build.success` / `test.success` is `true` (counts as passing). Include `template_id` (Read from this template's frontmatter) verbatim in the return value.
+Return value: `{path, success, environmental, changed_files, format_violations_fixed, workflow_source, workflow_warning, summary_line (<=200 chars, e.g. "build-format.md / format ok / build ok / test ok" or "build-format.md / format ok / build skipped (comments only) / test skipped" or "none / visual-only: no workflow declared"), template_id}`. `success` is `failure == null`. For a stage that did not run (`ran = false`), its `build.success` / `test.success` is `true` (counts as passing). Include `template_id` (Read from this template's frontmatter) verbatim in the return value.
+
+Set `failure.environmental` according to `build-format-detection.md`. Return that value as `environmental` (false on success), and formatter-modified source paths as `changed_files`. For purely environmental failures, set the specialist to null.

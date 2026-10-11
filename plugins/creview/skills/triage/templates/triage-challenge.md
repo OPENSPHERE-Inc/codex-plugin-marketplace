@@ -10,7 +10,7 @@ Preconditions:
 
 - Your only filesystem write is `{{tmp_dir}}/challenge-{{batch_index}}-{{challenge_index}}.jsonl`. Sources are Read-only.
 - Do not Read any other `challenge-*.jsonl`: the parallel instances' stances are tallied as independent votes.
-- The paths passed (`{{document_path}}` / `{{tmp_dir}}`) are relative. Do not convert them to absolute paths.
+- Preserve the supplied document, scratch, previous-round, and challenge paths. Resolve finding locations and source `file:line` references in reasons against `{{target_dir}}`.
 
 Inputs:
 

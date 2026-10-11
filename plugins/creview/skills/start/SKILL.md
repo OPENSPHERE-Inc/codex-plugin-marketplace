@@ -9,6 +9,8 @@ Act as the review leader. Delegate review judgments and aggregation; retain only
 
 This workflow requires Codex collaboration tools. Stop and report the missing capability when `spawn_agent`, `wait_agent`, or agent-status inspection is unavailable.
 
+Before creating outputs, read `../../rules/worktree.md` and apply its initialization and execution contract. Inherit `target_dir` and `main_root` from the parent and pass them to every child. All `.codex/tmp/` paths are absolute paths rooted at `metadata_root`.
+
 ## Runtime paths
 
 Resolve `skill_dir` from this loaded `SKILL.md` and `plugin_root` as two directory levels above it. Convert both to absolute paths before launching children. Read `../../rules/sub-agent.md`; every child launch follows that contract.

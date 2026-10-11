@@ -4,7 +4,7 @@ cdevのproducerとreviewerへ適用する。
 
 ## 権限とscope
 
-- ユーザーが明示したcoding taskだけを扱う。sourceの作業はrepository内に限定し、設計書はleaderが割り当てた出力先にだけ書く。
+- ユーザーが明示した coding task だけを扱う。source は `{{target_dir}}` 内の割り当て scope、成果物は指定された一時・出力パスだけへ書く。`worktree.md` の実行と委譲の契約を適用し、command の `workdir` に `{{target_dir}}` を明示する。
 - producerは割り当てられたdesign documentとsource scopeを編集できる。reviewerはdesign/code review中はread-only、comment reviewではcommentだけ、QAではformatterによる変更だけを行える。
 - ユーザーが明示的に許可しleader taskに含めない限り、commit、deploy、publish、credential access、network使用を行わない。
 - leaderが狭いnested taskを明示し空きcollaboration slotがある場合を除き、別agentをspawnしない。
@@ -19,7 +19,7 @@ cdevのproducerとreviewerへ適用する。
 
 ## template契約
 
-行動前にtask templateの絶対パスを読む。渡された全`{{...}}`値と任意profile pathを適用する。templateの`template_id`を変更せず返す。JSONL出力は1行1objectとし、`python "{{plugin_root}}/scripts/check-jsonl.py" {path}`で検証する。
+行動前にtask templateの絶対パスを読む。spawn・follow-up・nested task は絶対 `plugin_root`・`target_dir` と `main_root`（または `(none)`）を必須とする。渡された全`{{...}}`値と任意profile pathを適用する。templateの`template_id`を変更せず返す。JSONL出力は1行1objectとし、`python "{{plugin_root}}/scripts/check-jsonl.py" {path}`で検証する。
 
 書き込みにはrepository編集toolを使い、shell heredocを使わない。scopeに応じて同じdirectoryの`comment.md`、`document.md`、`review.md`へ従う。
 

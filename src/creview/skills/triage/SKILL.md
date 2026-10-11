@@ -7,6 +7,8 @@ description: 既存 CReview ドキュメントの指摘を敵対的にトリア�
 
 レビュードキュメントを handoff 境界として扱う。この phase ではソースを修正しない。
 
+出力作成前に `../../rules/worktree.md` を読み、初期化と実行契約を適用する。上位の `target_dir`・`main_root` を引き継ぎ、全 child に渡す。全 `.codex/tmp/` パスは `metadata_root` 基準の絶対パスとする。
+
 ## runtime path
 
 読み込まれたファイルから `skill_dir` を解決し、その 2 階層上を `plugin_root` とする。子メッセージには絶対値を使う。`../../rules/sub-agent.md` を読む。この phase には collaboration tool が必要で、challenge agent を nested spawn する場合がある。委譲できなければ停止する。

@@ -9,6 +9,8 @@ description: 明示的に依頼された並列・マルチエージェントコ�
 
 このワークフローには Codex collaboration tool が必要である。`spawn_agent`、`wait_agent`、agent status の確認が利用できなければ停止して不足機能を報告する。
 
+出力作成前に `../../rules/worktree.md` を読み、初期化と実行契約を適用する。上位の `target_dir`・`main_root` を引き継ぎ、全 child に渡す。全 `.codex/tmp/` パスは `metadata_root` 基準の絶対パスとする。
+
 ## runtime path
 
 読み込まれたこの `SKILL.md` から `skill_dir` を解決し、その 2 階層上を `plugin_root` とする。子を起動する前に両方を絶対パスへ変換する。`../../rules/sub-agent.md` を読み、すべての子起動でその契約に従う。

@@ -24,6 +24,19 @@ The request supplies an existing target path plus edit requirements, or a kind, 
 
 Codex skills replace Claude-style slash-command files. When asked to create or migrate a command, create a `skill` and explain the mapping in the final report.
 
+## Options and workspace
+
+- `--commit` — Commit only this run's edits after validation.
+- `--worktree[=branch]` — Edit in a separate worktree and enable `--commit`.
+
+Resolve absolute `plugin_root` two levels above this skill and fix `timestamp` once as `YYYYMMDD-HHMMSS`.
+
+With `--commit` (including when enabled by `--worktree`), before editing or creating a worktree run `git status --porcelain -- {target}` in the invocation checkout for an in-repository target. Stop with an error if it has uncommitted changes.
+
+With `--worktree`, require invocation from the repository root and a repository-relative target without `..` components; reject absolute targets. Before creation, run `git check-ignore -q -- {target}`: exit 0 rejects an ignored target, exit 1 continues, and any other exit stops with an invalid-repository-path error. Then apply initialization and execution from `../../rules/worktree.md`. If an edit target is absent under `target_dir`, report it and perform completion without editing the original checkout's copy.
+
+Without `--worktree`, resolve relative targets against the invocation working directory.
+
 ## Output constraints
 
 - Keep the target in the language requested by the user or already used by the file.
@@ -40,6 +53,8 @@ Codex skills replace Claude-style slash-command files. When asked to create or m
 4. Compress the result. Remove politeness, repetition, self-evident instructions, effect-restating explanations, and examples that do not change behavior. Retain decision criteria, safety boundaries, authorization requirements, fallbacks, and input/output contracts.
 5. Build an interpretation checklist covering inputs, branch conditions, failure paths, side effects, and output. Reread only the produced prompt and answer the checklist from its text. Fix any unclear item and repeat, up to three passes.
 6. Validate a created or substantially changed Codex skill with the available `quick_validate.py` from `skill-creator`. If it is unavailable, verify the YAML frontmatter, folder/name match, and absence of unfinished placeholders manually.
+7. If validation succeeds and `--commit` is set, stage only this run's changed paths and use a path-limited `git commit -- {paths}`. Exclude files outside the repository, Git-ignored files, `.codex/tmp/`, `.codex/worktrees/`, and unrelated pre-existing changes; preserve their staged state. Never use `git add -A`; skip the commit when no eligible changes remain.
+8. If a worktree was created, apply the completion contract in `../../rules/worktree.md`, including on early termination. If this run leaves created or edited ignored files, retain the worktree without removal and report those files. Report the branch, commits, and any retained worktree path.
 
 Do not spawn a test agent unless the user explicitly requested delegation or an independent agent evaluation. When such delegation is authorized and available, give the evaluator the target prompt and checklist but not the intended answers.
 

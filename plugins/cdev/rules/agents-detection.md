@@ -9,3 +9,5 @@ Inspect these scopes in priority order:
 3. `{{plugin_root}}/references/agents/**/*.md`.
 
 Collect `{name, description, profile_path, config_file}` where available; higher-priority entries win name collisions. Match descriptions to the requested role, language, subsystem, and risk. Return the closest profile or `{name: "general", profile_path: null}`. A child reads the profile and any referenced config file for perspective but remains bounded by its task template.
+
+Resolve project `.codex/` under `main_root` when it is not `(none)`, otherwise under `{{target_dir}}`. Return absolute profile paths and resolve relative `config_file` references against the declaring configuration's directory.

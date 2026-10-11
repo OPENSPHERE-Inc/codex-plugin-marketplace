@@ -23,9 +23,9 @@ Codex のスキルとコラボレーションツール向けに移植してい�
 
 ~~~console
 codex plugin marketplace add .
-codex plugin add cprompt@opensphere-inc-codex
-codex plugin add creview@opensphere-inc-codex
-codex plugin add cdev@opensphere-inc-codex
+codex plugin add cprompt@opensphere-inc
+codex plugin add creview@opensphere-inc
+codex plugin add cdev@opensphere-inc
 ~~~
 
 GitHub リポジトリも直接追加できます。
@@ -68,8 +68,11 @@ python scripts/validate_repository.py
 python -m unittest discover -s tests -v
 ~~~
 
-一時ファイルは対象リポジトリの `.codex/tmp/`、レビュー文書は
-`.codex/reviews/` 以下へ出力されます。
+一時ファイルと既定のレビュー・設計文書は対象リポジトリの `.codex/tmp/` 以下へ出力します。
+`$cprompt:edit`、`$creview:rounds`、`$cdev:coding` は `--worktree[=branch]` で
+`.codex/worktrees/` 内の別チェックアウトを使えます。この場合も文書と一時ファイルは
+起動元に残り、検証後の変更は専用ブランチへコミットされます。
+各プラグインの README にオプション、検証失敗時の扱い、出力先を記載しています。
 
 ## ライセンス
 

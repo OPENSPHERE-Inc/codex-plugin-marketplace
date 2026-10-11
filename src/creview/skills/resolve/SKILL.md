@@ -7,6 +7,8 @@ description: CReview ドキュメントに記録された修正を現在の差�
 
 finding を検証する。この phase では新しい修正を実装しない。
 
+出力作成前に `../../rules/worktree.md` を読み、初期化と実行契約を適用する。上位の `target_dir`・`main_root` を引き継ぎ、全 child に渡す。全 `.codex/tmp/` パスは `metadata_root` 基準の絶対パスとする。
+
 ## runtime path と入力
 
 絶対 `skill_dir` と `plugin_root` を解決し、`../../rules/sub-agent.md` を読む。入力は CReview ドキュメントと任意の `--base {branch}`。省略時は存在する `main`、次に `master` を選ぶ。

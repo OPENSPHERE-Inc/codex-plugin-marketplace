@@ -74,3 +74,28 @@ Python 補助スクリプトが差分取得、JSONL 検証、文書レンダリ�
 - Python 3.11 以降
 - Codex のコラボレーションツール
 - 要求する並列度に足りるコラボレーションスロット
+
+## worktree での実行
+
+`$creview:rounds --worktree[=branch]` は `.codex/worktrees/` に別 checkout を作り、
+`--commit` も有効にします。branch が既存ならその tip、未作成なら現在の HEAD から開始し、
+省略時は `creview-rounds-{timestamp}` を新規作成します。別 checkout で使用中の branch は
+指定できません。起動元の作業ツリーは未 commit の変更があっても利用できますが、その変更は
+worktree へコピーされません。
+
+source の相対パスは worktree 基準です。起動元内の絶対パスは読み取り専用で、
+自動的に worktree 内へ置き換えません。文書と一時ファイルは起動元へ保存し、
+相対の出力先も起動元基準で解決します。worktree 内を永続文書の出力先には指定できません。
+project の Codex profile と `.codex/rules/` も起動元から読みます。
+
+終了時は worktree を削除して branch を残します。未 commit 変更や削除を妨げる状態があれば
+worktree を保持し、そのパスを報告します。削除時は内部の ignored file も削除されます。
+branch の merge や push は行いません。
+
+Git が無視する依存関係・仮想環境・生成物・`.env` と submodule の内容は worktree に
+引き継がれません。新規 checkout で検証できる環境が必要です。configure は build stage の
+開始時だけに実行されるため、先に動く formatter や build なしの test の準備には使えません。
+不足した前提条件だけによる失敗では source 修正を止め、環境原因として報告します。
+コード原因が混在する場合は、その部分だけを修正対象にします。
+`--commit` は検証失敗を報告した場合も今回の修正をコミットします。
+すべての CReview スキルはリポジトリルートから起動してください。

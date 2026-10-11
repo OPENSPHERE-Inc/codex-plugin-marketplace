@@ -17,4 +17,6 @@ template_id: 6e2a9f5c-1d83-4b74-9c2e-5a8d3f1b7e29
 2. 修正実装（AGENTS.md のコーディング規約準拠）。
 3. セルフレビュー: 変更箇所再読、エラー解消と新規問題の混入がないことを確認。
 
-戻り値: `{description, template_id}`。`template_id` は本テンプレートの frontmatter から Read した値をそのまま含める。
+戻り値: `{description, changed_files, template_id}`。`template_id` は本テンプレートの frontmatter から Read した値をそのまま含める。
+
+`changed_files` は今回変更した source path を `{{target_dir}}` 基準で返す。環境原因は source を変更して解決しない。

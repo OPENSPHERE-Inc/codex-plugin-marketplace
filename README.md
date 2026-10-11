@@ -23,9 +23,9 @@ Add a local checkout as a marketplace:
 
 ~~~console
 codex plugin marketplace add .
-codex plugin add cprompt@opensphere-inc-codex
-codex plugin add creview@opensphere-inc-codex
-codex plugin add cdev@opensphere-inc-codex
+codex plugin add cprompt@opensphere-inc
+codex plugin add creview@opensphere-inc
+codex plugin add cdev@opensphere-inc
 ~~~
 
 Codex can also add the GitHub repository directly:
@@ -68,9 +68,11 @@ python scripts/validate_repository.py
 python -m unittest discover -s tests -v
 ~~~
 
-The plugins write temporary workflow artifacts below the destination
-repository's `.codex/tmp/` directory. Review documents are written below
-`.codex/reviews/`.
+Temporary artifacts and default review/design documents are written below the destination
+repository's `.codex/tmp/`. `$cprompt:edit`, `$creview:rounds`, and `$cdev:coding` accept
+`--worktree[=branch]` to use a separate checkout under `.codex/worktrees/`. Documents and scratch
+files remain in the invocation checkout, and edits are committed on the selected branch.
+See each plugin's README for options, verification failure behavior, and output locations.
 
 ## License
 

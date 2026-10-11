@@ -7,6 +7,8 @@ description: Verify fixes recorded in a CReview document against the current dif
 
 Verify findings; do not implement new fixes in this phase.
 
+Before creating outputs, read `../../rules/worktree.md` and apply its initialization and execution contract. Inherit `target_dir` and `main_root` from the parent and pass them to every child. All `.codex/tmp/` paths are absolute paths rooted at `metadata_root`.
+
 ## Runtime paths and input
 
 Resolve absolute `skill_dir` and `plugin_root` and read `../../rules/sub-agent.md`. The input is a CReview document plus optional `--base {branch}`; otherwise choose existing `main`, then `master`.

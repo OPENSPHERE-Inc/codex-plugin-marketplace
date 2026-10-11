@@ -24,8 +24,12 @@ plugins through `.agents/plugins/marketplace.json`.
   unlimited agents.
 - Keep scripts compatible with Python 3.11 or later and Windows, macOS, and
   Linux.
-- Write workflow scratch data only below the destination repository's
-  `.codex/tmp/` directory.
+- Write workflow scratch data only below `.codex/tmp/` in the invocation checkout.
+  Worktree runs edit sources under `.codex/worktrees/` and keep documents and
+  scratch data in the invocation checkout; pass absolute `target_dir` and
+  `main_root` to all child tasks and use explicit command working directories.
+- Keep `scripts/worktree.py` identical across all three plugins and both trees,
+  and `scripts/lib/scratch_guard.py` identical across creview/cdev and both trees.
 - Preserve the `template_id` line in task templates and keep each ID unique
   within a plugin.
 

@@ -8,7 +8,7 @@ template_id: 9d3c5f8a-2b71-4e94-a8c5-1f7d3b9e2c46
 
 入力: 作業ディレクトリ `{{tmp_dir}}`、修正差分 `{{diff_path}}`（`fetch_diff.py` 出力。今回の修正内容）、試行番号 `{{attempt_num}}`（情報のみ）
 
-コマンド実行 CWD はプロジェクトルート前提。絶対パスは使わず相対パスのみ。パイプ経由の `tee` / `Tee-Object`、コンパウンドコマンド（`;` / `&&`）は使用しない（Bash ツールが終了コードを自動返却する）。
+command の `workdir` に `{{target_dir}}` を明示する。`tmp_dir`・`diff_path` は渡された絶対パスを維持し、source と `failure.error_files` は `{{target_dir}}` 基準で記録する。パイプ経由の `tee` / `Tee-Object`、コンパウンドコマンド（`;` / `&&`）は使用しない（Bash ツールが終了コードを自動返却する）。
 
 実施内容:
 
@@ -50,8 +50,10 @@ template_id: 9d3c5f8a-2b71-4e94-a8c5-1f7d3b9e2c46
   "format": {changed_files: [...], format_violations_fixed: <int>, format_violations_remaining: <int>},
   "build": {ran: <bool>, success: <bool>},
   "test": {ran: <bool>, success: <bool>},
-  "failure": {stage: "build | test | visual", log_path, error_summary | null, error_files: ["src/foo.cpp:42", ...] | null, suggested_specialist | null, fix_guidance | null} | null
+  "failure": {stage: "build | test | visual", log_path, error_summary | null, error_files: ["src/foo.cpp:42", ...] | null, suggested_specialist | null, fix_guidance | null, environmental: <bool>} | null
 }
 ```
 
-戻り値: `{path, success, format_violations_fixed, workflow_source, workflow_warning, summary_line（<=200 chars。例: "build-format.md / format ok / build ok / test ok" や "build-format.md / format ok / build skipped (comments only) / test skipped" や "none / visual-only: no workflow declared"）, template_id}`。`success` は `failure == null`。未実行ステージ（`ran = false`）の `build.success` / `test.success` は `true`（成功扱い）。`template_id` は本テンプレートの frontmatter から Read した値をそのまま含める。
+戻り値: `{path, success, environmental, changed_files, format_violations_fixed, workflow_source, workflow_warning, summary_line（<=200 chars。例: "build-format.md / format ok / build ok / test ok" や "build-format.md / format ok / build skipped (comments only) / test skipped" や "none / visual-only: no workflow declared"）, template_id}`。`success` は `failure == null`。未実行ステージ（`ran = false`）の `build.success` / `test.success` は `true`（成功扱い）。`template_id` は本テンプレートの frontmatter から Read した値をそのまま含める。
+
+`failure.environmental` は `build-format-detection.md` の判定に従う。戻り値 `environmental` はその値（成功時 false）、`changed_files` は formatter が変更した source path とする。環境原因だけなら specialist は null とする。

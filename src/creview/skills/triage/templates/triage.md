@@ -9,7 +9,7 @@ template_id: 1e9c4f7a-5b82-4d63-a1c8-3f7d2e9b4a15
 前提:
 
 - `{{tmp_dir}}` はリーダーが事前に `mkdir -p` で作成済み。Sub から存在確認 (`Test-Path` / `ls` 等) や mkdir は不要。自身のファイルシステム書き込みは `triage-draft.jsonl` と `triage.jsonl` の 2 つ。ネスト起動する反証 Sub / 裁定 Sub は、それぞれのテンプレートが指定する `challenge-{b}-{n}.jsonl` / `adjudication.jsonl` を書く。
-- 渡されるパス (`{{document_path}}` / `{{tmp_dir}}`) は相対形式。絶対パスへの変換は行わない。
+- 渡された document・scratch・過去 round のパスはそのまま使う。finding location と source の参照は `{{target_dir}}` 基準で解決する。
 
 `{{previous_round_doc_paths}}` が提供されていれば（Round 1 で実施する標準フローでは空）、各ファイルを Read して過去ラウンドの判定情報（id / location / description / METADATA の triage / estimate / status / verification）を抽出し、トリアージで参照する。空または `(none)` の場合は参照不要。
 
@@ -46,6 +46,8 @@ stage 分類（current_meta に基づく）:
 
 変数（テンプレート中の {{...}} placeholder を置換）:
 - plugin_root: {{plugin_root}}
+- target_dir: {{target_dir}}
+- main_root: {{main_root}}
 - document_path: {{document_path}}
 - tmp_dir: {{tmp_dir}}
 - previous_round_doc_paths: {{previous_round_doc_paths}}
@@ -70,6 +72,8 @@ draft の判定を覆すには当該 id の所属バッチからの flip 票が 
 
 変数（テンプレート中の {{...}} placeholder を置換）:
 - plugin_root: {{plugin_root}}
+- target_dir: {{target_dir}}
+- main_root: {{main_root}}
 - document_path: {{document_path}}
 - tmp_dir: {{tmp_dir}}
 - previous_round_doc_paths: {{previous_round_doc_paths}}

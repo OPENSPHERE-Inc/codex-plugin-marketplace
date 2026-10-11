@@ -7,6 +7,8 @@ description: Adversarially triage findings in an existing CReview document, esti
 
 Treat the review document as the handoff boundary. Do not fix source code in this phase.
 
+Before creating outputs, read `../../rules/worktree.md` and apply its initialization and execution contract. Inherit `target_dir` and `main_root` from the parent and pass them to every child. All `.codex/tmp/` paths are absolute paths rooted at `metadata_root`.
+
 ## Runtime paths
 
 Resolve `skill_dir` from this loaded file and `plugin_root` two levels above it; use absolute values in child messages. Read `../../rules/sub-agent.md`. This phase requires collaboration tools and may use nested challenge agents; stop when delegation is unavailable.

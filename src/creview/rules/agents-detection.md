@@ -19,3 +19,5 @@ config エントリでは agent name、description、存在する場合は参照
 ## 結果
 
 呼び出し元が指定したフィールドへ `{name, profile_path, reason}` を返すか保存する。spawn された子は行動前に、null でない `profile_path` と、そこに指定された `config_file` を読む。その内容を専門視点として扱い、起動テンプレートと権限境界には引き続き従う。
+
+project の `.codex/` は `main_root` が `(none)` でなければその配下、それ以外は `{{target_dir}}` 配下で解決する。返す profile path は絶対パスとし、相対 `config_file` は宣言元 config のディレクトリ基準で解決する。

@@ -9,7 +9,7 @@ template_id: 4f8a2d1c-9b35-4e67-a2c1-8b5d3f9e7a16
 入力:
 
 - 各ラウンドのレビュードキュメント: `{{round_doc_paths}}`（例: `Round 1 → {round1_doc_path}, Round 2 → {round2_doc_path}, ...`）
-- 各ラウンドの統計（参考情報）: `{{round_stats}}`（例: `Round 1: findings=N, will_fix=N, maintain=N, alternative=N, downgrade=N, fixed=N, wontfix=N, feedback_attempts=N, unresolved=N, code_changed=<bool>, ...`）。`workflow_warning="..."` が付与されているラウンドは、そのラウンドの respond でフォーマット／ビルド手順が解決できず自動検証をスキップしたことを示す。
+- 各ラウンドの統計（参考情報）: `{{round_stats}}`（例: `Round 1: findings=N, will_fix=N, maintain=N, alternative=N, downgrade=N, fixed=N, wontfix=N, feedback_attempts=N, unresolved=N, code_changed=<bool>, ...`）。`workflow_warning="..."` が付与されているラウンドは、そのラウンドの respond で手順未宣言による自動検証スキップ、または環境原因による検証未完了を示す。どちらかは警告内容で判定する。
 - レポートテンプレート: `{{template_path}}`
 - 出力先: `{{report_path}}`
 - 言語: `{{language}}`

@@ -20,11 +20,14 @@ Options:
 - `--review-rounds N` — Producer/reviewer loop cap, default 5, range 1–10.
 - `--qa-attempts N` — QA/fix loop cap, default 5, range 1–10.
 - `--commit` — After QA passes, stage only this run's source paths and create one concise commit.
+- `--worktree[=branch]` — Run in a separate worktree and enable `--commit`.
 - `--output {dir}` — Directory for design documents retained after the run.
 
-Fix `{timestamp}` once and set the working directory `{tmp_dir}` to `.codex/tmp/cdev-coding-{timestamp}/`. Set `{design_dir}` to `--output` when supplied, otherwise `.codex/tmp/cdev-coding-{timestamp}-design/`. Resolve relative paths from the destination repository root. Use a dedicated design directory; reject the repository root, directories containing source files, and `{tmp_dir}` itself or its descendants.
+Before creating outputs or launching children, apply the initialization and execution contract in `../../rules/worktree.md`; pass `target_dir` and `main_root` in every spawn and follow-up.
 
-Before starting, check `git status --porcelain -uall`, excluding entries under `.codex/tmp/` and the explicitly supplied `--output` destination. If any staged, unstaged, or untracked changes remain, stop and ask the user to commit, stash, or choose another workflow.
+Fix `{timestamp}` once and set the scratch directory `{tmp_dir}` to `.codex/tmp/cdev-coding-{timestamp}/`. Set `{design_dir}` to `--output` when supplied, otherwise `.codex/tmp/cdev-coding-{timestamp}-design/`. Resolve scratch paths and relative output destinations against `metadata_root` and make them absolute. Use a dedicated design directory; reject the repository root, directories containing source files, and `{tmp_dir}` itself or its descendants.
+
+Without `--worktree`, before starting check `git status --porcelain -uall`, excluding entries under `.codex/tmp/`, `.codex/worktrees/`, and the explicitly supplied `--output` destination. If any staged, unstaged, or untracked changes remain, stop and ask the user to commit, stash, or choose another workflow.
 
 Write design and finding prose in the user's language; keep field names and severity labels in English.
 
@@ -50,8 +53,11 @@ Spawn each task name once. A completed child is idle but retains context. Start 
 9. Run QA up to `--qa-attempts`:
    - Capture this run's diff with `python "{plugin_root}/scripts/fetch_diff.py" diff {tmp_dir}/baseline-tree {tmp_dir}/changes.txt`.
    - Follow up the reviewer with `templates/qa.md`, bundled profile `../../references/agents/dev-helper.md`, expected ID `6a711cba-0da8-4177-a41f-ddb4cf2a6e1f`, temp path, diff path, and attempt number.
-   - On failure, follow up the producer with the code template, `qa-result.jsonl`, and `build.log`; then repeat comment review, code review, and QA.
-10. If QA passes and `--commit` is set, exclude `.codex/tmp/` and `{design_dir}` from the changed paths returned by the producer and formatter, then stage and commit only the remaining paths in one commit. Keep already-staged excluded paths out of the commit without altering their staged state. Skip the commit if no eligible paths remain. Never use `git add -A`.
+   - When `success == false` and `environmental == true`, report the cause as a warning and end the QA loop without source fixes or a commit.
+   - Only when `success == false` and `environmental == false`, follow up the producer with the code template, `qa-result.jsonl`, and `build.log`; then repeat comment review, code review, and QA.
+10. If QA passes and `--commit` is set, exclude `.codex/tmp/`, `.codex/worktrees/`, and `{design_dir}` from the changed paths returned by the producer and formatter, then stage and commit only the remaining paths in one commit. Keep already-staged excluded paths out of the commit without altering their staged state. Skip the commit if no eligible paths remain. Never use `git add -A`.
 11. Retain the final QA summary and review counts, then remove only `{tmp_dir}` with `python "{plugin_root}/scripts/del_tmp.py" "{tmp_dir}"`. Keep `{design_dir}` and its design documents.
+
+Apply the completion contract in `../../rules/worktree.md`, including on early termination.
 
 Report design document paths, team task names, design/code review rounds, changed files, unresolved findings, QA result and warning, commit hash when applicable, and any failure that stopped a gate.

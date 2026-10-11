@@ -26,9 +26,10 @@ template_id: 4a8e2d6f-9b15-4c73-8a2d-7f1e5c9b3d68
 
 ## 戻り値
 
-`{reviewed_paths, fix_count, template_id}`
+`{reviewed_paths, changed_files, fix_count, template_id}`
 
 - `reviewed_paths`: 追加・変更コメントが検出されレビューしたファイルパス一覧（空配列もあり）
+- `changed_files`: 実際に変更した source path（`{{target_dir}}` 基準、空配列もあり）
 - `fix_count`: 修正したコメントの件数（手順 4 で削除した注記を含む。0 ならコメント修正なし）
 
 `template_id` は本テンプレートの frontmatter から Read した値をそのまま含める。
