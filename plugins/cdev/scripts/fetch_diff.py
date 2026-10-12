@@ -15,7 +15,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 GUARD = SCRIPT_DIR / "lib" / "scratch_guard.py"
 HASH_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
-PATHSPEC = ["--", ":(top)", ":(top,exclude).codex/tmp", ":(exclude).codex/tmp"]
+PATHSPEC = ["--", ":(top)", ":(top,exclude).codex/tmp", ":(top,exclude).codex/worktrees"]
 DIFF_PREFIX = [
     "git",
     "-c",
@@ -89,7 +89,7 @@ def worktree_tree() -> str:
             shutil.copy2(real_index, temp_index)
         env = os.environ.copy()
         env["GIT_INDEX_FILE"] = str(temp_index)
-        run(["git", "add", "-A"], env=env)
+        run(["git", "add", "-A", *PATHSPEC], env=env)
         return text(run(["git", "write-tree"], env=env)).strip()
 
 

@@ -21,9 +21,9 @@ whether commits are allowed, and any files that must remain untouched.
 - `--qa-attempts N` caps the QA/fix loop. Default: 5; range: 1–10.
 - `--commit` commits this run's changes after QA succeeds. Without it, no commit is made.
 - `--output {dir}` sets the design document directory, defaulting to
-  `.codex/tmp/cdev-coding-{timestamp}-design/`. Relative paths resolve from the destination
-  repository root. The repository root, directories containing source files, and the run's
-  disposable working directory or its descendants are not valid destinations.
+  `.codex/tmp/cdev-coding-{timestamp}-design/`. Relative paths resolve from the invocation
+  repository root, including in worktree mode. The repository root, directories containing source
+  files, and the run's disposable working directory or its descendants are not valid destinations.
 
 The design document `{design_dir}/design.md` is kept after the run, and the final report lists
 its path. The working directory `.codex/tmp/cdev-coding-{timestamp}/` is deleted after the run.
@@ -31,7 +31,7 @@ its path. The working directory `.codex/tmp/cdev-coding-{timestamp}/` is deleted
 
 ## Workflow
 
-1. Confirm repository instructions, task scope, and a clean starting worktree.
+1. Confirm repository instructions and task scope; prepare the selected working tree.
 2. Start one persistent producer and one persistent reviewer.
 3. Analyze the team and prepare a design.
 4. Iterate design and design review until the gate passes.
@@ -51,9 +51,9 @@ design's stated accepted scope. It challenges the scope itself only if the task 
 
 ## Safety and output
 
-- A clean Git worktree is required at the start so user changes are not
-  mistaken for workflow output. This check excludes `.codex/tmp/` and the explicitly supplied
-  `--output` destination, so design documents from earlier runs do not block a new run.
+- Without `--worktree`, a clean Git worktree is required at the start so user changes are not
+  mistaken for workflow output. This check excludes `.codex/tmp/`, `.codex/worktrees/`, and the
+  explicitly supplied `--output` destination, so earlier design documents do not block a new run.
 - Repository and user Codex agent profiles may inform role prompts; bundled
   reference profiles provide a fallback.
 - Intermediate files are written only below `.codex/tmp/`.
@@ -66,3 +66,29 @@ design's stated accepted scope. It challenges the scope itself only if the task 
 - Python 3.11 or later
 - Codex collaboration tools
 - Project-specific build and test dependencies
+
+## Worktree execution
+
+`$cdev:coding --worktree[=branch]` creates a separate checkout under
+`.codex/worktrees/` and enables `--commit`. An existing branch starts at its tip; a missing
+branch starts at the current HEAD. Without a branch name, it creates
+`cdev-coding-{timestamp}`. A branch already checked out elsewhere is rejected.
+The invocation checkout may contain uncommitted changes; those changes are not copied.
+
+Relative source paths resolve against the worktree. Absolute paths into the original checkout
+are read-only references and are not rewritten. Documents and scratch files stay in the invocation
+checkout; relative output destinations resolve there too. Retained documents cannot be placed
+inside the worktree. Project Codex profiles and `.codex/rules/` are read from the invocation
+checkout.
+
+At completion the worktree is removed and the branch is retained. If uncommitted changes or
+another condition prevent removal, the worktree is kept and its path is reported. Removal also
+deletes ignored files inside it. The workflow does not merge or push the branch.
+
+Ignored dependencies, virtual environments, generated files, `.env`, and submodule contents are
+not copied into a worktree. Verification must work in a fresh checkout. Configure runs only at
+the start of the build stage, so it cannot prepare the earlier formatter or tests without a build.
+Failures caused solely by missing prerequisites stop source-fix attempts and are reported as
+environmental. For mixed failures, only code-caused errors are sent for source fixes.
+A failed QA gate leaves changes uncommitted in the worktree.
+Start this skill from the repository root.

@@ -12,6 +12,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 GUARD = SCRIPT_DIR / "lib" / "scratch_guard.py"
+PATHSPEC = ["--", ":(top)", ":(top,exclude).codex/tmp", ":(top,exclude).codex/worktrees"]
 DIFF_PREFIX = [
     "git",
     "-c",
@@ -79,7 +80,7 @@ def prepare_output(raw: str) -> Path:
 
 
 def review_diff(*args: str, env: dict[str, str] | None = None) -> str:
-    return text(run([*DIFF_PREFIX, *args], env=env))
+    return text(run([*DIFF_PREFIX, *args, *PATHSPEC], env=env))
 
 
 def validate_revision(revision: str) -> None:
@@ -104,6 +105,8 @@ def untracked_diff() -> str:
             "--",
             ":(exclude).codex/tmp",
             f":(exclude){prefix}.codex/tmp",
+            ":(exclude).codex/worktrees",
+            f":(exclude){prefix}.codex/worktrees",
         ]
     )
     paths = [os.fsdecode(item) for item in listing.split(b"\0") if item]

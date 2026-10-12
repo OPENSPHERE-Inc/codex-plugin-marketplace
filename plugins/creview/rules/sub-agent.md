@@ -5,7 +5,7 @@ Apply these rules to every sub-agent launched by a creview skill.
 ## Authorization and scope
 
 - creview delegation is allowed only when the user explicitly invokes a creview skill or explicitly requests a parallel or multi-agent review workflow.
-- Write only the output paths assigned by the launch template.
+- Write only within the assigned source scope under `{{target_dir}}` and the assigned scratch/output paths. Apply the execution and delegation contract in `worktree.md`; explicitly set command `workdir` to `{{target_dir}}`.
 - Source edits are allowed only for fix, build-fix, comment-review, and formatter tasks, and only within the scope assigned to that task. All other review tasks are read-only.
 - A child launched by a sub-agent inherits its parent's write and side-effect limits.
 - Run build, test, formatter, network, commit, or other state-changing commands only when the template and the user's authorization permit them.
@@ -23,7 +23,7 @@ Apply these rules to every sub-agent launched by a creview skill.
 Include all of the following:
 
 1. The absolute path of the external template and an instruction to read it before acting.
-2. Every value for the template's `{{...}}` placeholders, including the absolute `plugin_root`.
+2. Absolute `target_dir`, `main_root` (or `(none)`), and every value for the template's `{{...}}` placeholders, including the absolute `plugin_root`.
 3. Round-specific overrides, explicitly `(none)` when absent.
 4. The expected `template_id` and a requirement to return it unchanged.
 5. An optional specialist profile path. When present, read it after the task template and apply its domain perspective without expanding the assigned scope.
@@ -34,7 +34,7 @@ Do not quote or paraphrase the template body in the launch message. If the retur
 
 - Use the available repository editing tool for file writes; do not construct shell heredocs.
 - A `.jsonl` output described as one object must contain exactly one JSON object on one line.
-- Validate JSONL with `python "{{plugin_root}}/scripts/check-jsonl.py" {path}` and fix any error before returning.
+- Validate JSONL with `python "{{plugin_root}}/scripts/check-jsonl.py" "{path}"` and fix any error before returning.
 - Preserve field names, structural Markdown anchors, finding IDs, severity labels, and emoji required by the template.
 
 ## Shared conventions

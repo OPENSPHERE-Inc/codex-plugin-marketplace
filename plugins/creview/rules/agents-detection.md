@@ -19,3 +19,5 @@ Compare each description with the caller's match target: affected language, subs
 ## Result
 
 Return or store `{name, profile_path, reason}` in the field requested by the caller. Before acting, the spawned child reads `profile_path` when non-null and any `config_file` it names. The child treats that content as a specialist perspective while continuing to obey the launch template and authorization boundary.
+
+Resolve project `.codex/` under `main_root` when it is not `(none)`, otherwise under `{{target_dir}}`. Return absolute profile paths and resolve relative `config_file` references against the declaring configuration's directory.

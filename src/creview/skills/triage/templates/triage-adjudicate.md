@@ -9,7 +9,7 @@ template_id: 1921777f-3486-44ff-bc18-2b859ce75122
 前提:
 
 - 自身のファイルシステム書き込みは `{{tmp_dir}}/adjudication.jsonl` のみ。ソースは Read のみ。
-- 渡されるパス (`{{document_path}}` / `{{tmp_dir}}`) は相対形式。絶対パスへの変換は行わない。
+- 渡された document・scratch・過去 round・challenge のパスはそのまま使う。finding location と理由が引用する source `file:line` は `{{target_dir}}` 基準で解決する。
 
 入力:
 

@@ -5,6 +5,22 @@
 This repository distributes the `cprompt`, `creview`, and `cdev` Codex
 plugins through `.agents/plugins/marketplace.json`.
 
+## Codex Instructions
+
+Before starting each type of work below, read and follow the linked instructions.
+These files are not loaded automatically. Resolve the links relative to this
+AGENTS.md and apply all instruction files relevant to the task.
+
+- [Development](.codex/instructions/development.md): code changes, tests,
+  completion checks, and formatting.
+- [Comments](.codex/instructions/comment.md): code comments and deferred fixes.
+- [Prompts](.codex/instructions/prompt.md): AI-facing skills, templates, rules,
+  agent definitions, and AGENTS.md.
+- [Documentation](.codex/instructions/document.md): human-facing README files,
+  API references, and design documents.
+- [Review](.codex/instructions/review.md): code review findings and severity.
+- [Commits](.codex/instructions/commit.md): commit messages and trailers.
+
 ## Source and distribution policy
 
 - `src/<plugin>/` is the Japanese source of truth.
@@ -24,8 +40,12 @@ plugins through `.agents/plugins/marketplace.json`.
   unlimited agents.
 - Keep scripts compatible with Python 3.11 or later and Windows, macOS, and
   Linux.
-- Write workflow scratch data only below the destination repository's
-  `.codex/tmp/` directory.
+- Write workflow scratch data only below `.codex/tmp/` in the invocation checkout.
+  Worktree runs edit sources under `.codex/worktrees/` and keep documents and
+  scratch data in the invocation checkout; pass absolute `target_dir` and
+  `main_root` to all child tasks and use explicit command working directories.
+- Keep `scripts/worktree.py` identical across all three plugins and both trees,
+  and `scripts/lib/scratch_guard.py` identical across creview/cdev and both trees.
 - Preserve the `template_id` line in task templates and keep each ID unique
   within a plugin.
 

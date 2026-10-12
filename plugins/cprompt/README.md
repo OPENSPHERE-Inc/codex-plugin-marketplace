@@ -42,3 +42,27 @@ multi-agent execution.
 - `skills/edit/templates/`: prompt-type templates
 - `rules/prompt.md`: prompt design requirements
 - `rules/document.md`: Markdown conventions
+
+## Worktree execution
+
+`$cprompt:edit --worktree[=branch]` creates a separate checkout under
+`.codex/worktrees/` and enables `--commit`. An existing branch starts at its tip; a missing
+branch starts at the current HEAD. Without a branch name, it creates
+`cprompt-edit-{timestamp}`. A branch already checked out elsewhere is rejected.
+The invocation checkout may contain uncommitted changes; those changes are not copied.
+
+Relative source paths resolve against the worktree. Absolute paths into the original checkout
+are read-only references and are not rewritten. Documents and scratch files stay in the invocation
+checkout; relative output destinations resolve there too. Retained documents cannot be placed
+inside the worktree. Project Codex profiles and `.codex/rules/` are read from the invocation
+checkout.
+
+At completion the worktree is removed and the branch is retained. If uncommitted changes or
+another condition prevent removal, the worktree is kept and its path is reported. Removal also
+deletes ignored files inside it. The workflow does not merge or push the branch.
+
+`--commit` also works on its own. It commits only this run's validated edits and stops before
+editing if the target has uncommitted changes. Worktree mode requires a repository-relative,
+non-ignored target without `..`, and invocation from the repository root. Absolute targets are
+rejected in that mode. If an existing target is absent from the selected branch, the run stops.
+If any edited or created file is ignored by Git and cannot be committed, its worktree is retained.

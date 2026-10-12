@@ -24,6 +24,21 @@ description: AI 向け Markdown プロンプト、Codex の SKILL.md、AGENTS.md
 
 Codex では Claude 形式の slash-command ファイルをスキルが置き換える。command の作成・移行を求められた場合は `skill` を作成し、最終報告で対応関係を説明する。
 
+## オプションと作業先
+
+- `--commit` — 検証後、今回の編集だけを commit する。
+- `--worktree[=branch]` — 別 worktree で編集し、`--commit` を有効にする。
+
+この skill の2階層上を絶対 `plugin_root` とし、`timestamp` を `YYYYMMDD-HHMMSS` で一度確定する。
+
+`target` と各動的引数は引数配列の個別要素として渡す。shell command が必要な場合は、使用する shell に応じて値ごとに引用・エスケープし、例の引用符へ値を未処理で埋め込まない。
+
+`--commit`（`--worktree` による有効化も含む）では、編集・worktree 作成前に起動元 checkout の repository 内 target に `git --literal-pathspecs status --porcelain -- "{target}"` を実行する。変更があればエラーで停止する。
+
+`--worktree` では、root からの起動と、`..` 成分のない repository 相対 target を必須とする。絶対 target は拒否する。作成前に `git check-ignore -q -- "{target}"` を実行し、exit 0 は ignored target として拒否、exit 1 は続行、その他は不正な repository path として停止する。その後 `../../rules/worktree.md` の初期化・実行契約を適用する。編集対象が `target_dir` に存在しなければ、元 checkout のコピーを編集せず終了処理を行う。
+
+`--worktree` がなければ相対 target は起動時の作業ディレクトリ基準で解決する。
+
 ## 出力制約
 
 - ユーザーが指定した言語、または既存ファイルの言語を維持する。
@@ -40,6 +55,8 @@ Codex では Claude 形式の slash-command ファイルをスキルが置き換
 4. 結果を圧縮する。丁寧表現、重複、自明な指示、効果を言い換えただけの説明、挙動を変えない例を削除する。判断基準、安全境界、権限要件、フォールバック、入出力契約は残す。
 5. 入力、分岐条件、失敗経路、副作用、出力を覆う解釈チェックリストを作る。作成したプロンプトだけを再読し、その記述からチェック項目へ回答する。不明瞭な項目を修正し、最大 3 回繰り返す。
 6. 新規作成または大幅変更した Codex スキルは、利用可能な `skill-creator` の `quick_validate.py` で検証する。利用できない場合は YAML frontmatter、フォルダー名と `name` の一致、未完了プレースホルダーがないことを手動確認する。
+7. 検証成功かつ `--commit` 指定時は、今回の変更パスだけを `git --literal-pathspecs add -- {paths}` で stage し、path を限定した `git --literal-pathspecs commit -- {paths}` で commit する。`{paths}` は各 path を個別引数として展開し、単一の連結文字列として渡さない。repository 外、Git が無視する file、`.codex/tmp/`、`.codex/worktrees/`、無関係な既存変更を含めず、既存 stage 状態を維持する。`git add -A` は使わず、対象変更がなければ commit しない。
+8. worktree を作成した場合は、途中終了も含め `../../rules/worktree.md` の終了処理を行う。ただし今回作成・編集した ignored file が残る場合は削除せず、worktree とその file を報告する。branch、commit、残した worktree のパスを報告する。
 
 ユーザーが委譲または独立したエージェント評価を明示的に求めた場合を除き、テスト用エージェントを spawn しない。委譲が許可され利用可能な場合は、評価者に対象プロンプトとチェックリストを渡し、意図した回答は渡さない。
 

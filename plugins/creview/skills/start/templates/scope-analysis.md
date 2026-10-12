@@ -19,4 +19,6 @@ User-requested reviewers: `{{user_requested}}` (possibly empty).
 
 For each scope, apply the specialist-profile detection rule. Add each materially relevant profile as `{name, profile_path, reason}`. Use one `{name: "general", profile_path: null, reason: "no matching specialist profile"}` when none match. Add each user-requested reviewer to every scope unless already present; resolve its profile path when possible.
 
+If all selected profiles cover narrower concerns than the changed code's behavior (for example, comments only), add one `general` reviewer with no profile path. Do not duplicate an existing general reviewer.
+
 Return `{line_count, scopes: [{scope_id, paths, line_count, reviewers: [{name, profile_path, reason}]}], extension_summary, rationale, template_id}`. Return the frontmatter `template_id` unchanged.

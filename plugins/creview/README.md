@@ -75,3 +75,29 @@ rendering, and phase result compilation.
 - Python 3.11 or later
 - Codex collaboration tools
 - Enough available collaboration slots for the requested parallelism
+
+## Worktree execution
+
+`$creview:rounds --worktree[=branch]` creates a separate checkout under
+`.codex/worktrees/` and enables `--commit`. An existing branch starts at its tip; a missing
+branch starts at the current HEAD. Without a branch name, it creates
+`creview-rounds-{timestamp}`. A branch already checked out elsewhere is rejected.
+The invocation checkout may contain uncommitted changes; those changes are not copied.
+
+Relative source paths resolve against the worktree. Absolute paths into the original checkout
+are read-only references and are not rewritten. Documents and scratch files stay in the invocation
+checkout; relative output destinations resolve there too. Retained documents cannot be placed
+inside the worktree. Project Codex profiles and `.codex/rules/` are read from the invocation
+checkout.
+
+At completion the worktree is removed and the branch is retained. If uncommitted changes or
+another condition prevent removal, the worktree is kept and its path is reported. Removal also
+deletes ignored files inside it. The workflow does not merge or push the branch.
+
+Ignored dependencies, virtual environments, generated files, `.env`, and submodule contents are
+not copied into a worktree. Verification must work in a fresh checkout. Configure runs only at
+the start of the build stage, so it cannot prepare the earlier formatter or tests without a build.
+Failures caused solely by missing prerequisites stop source-fix attempts and are reported as
+environmental. For mixed failures, only code-caused errors are sent for source fixes.
+With `--commit`, this run's fixes are committed even after reporting a verification failure.
+Start all CReview skills from the repository root.

@@ -17,4 +17,6 @@ Procedure:
 2. Implement the fix (conform to the coding conventions in AGENTS.md).
 3. Self-review: Re-read the changed locations and confirm both that the error is resolved and that no new issues were introduced.
 
-Return value: `{description, template_id}`. Include `template_id` (Read from this template's frontmatter) verbatim in the return value.
+Return value: `{description, changed_files, template_id}`. Include `template_id` (Read from this template's frontmatter) verbatim in the return value.
+
+Return this task's modified source paths in `changed_files`, relative to `{{target_dir}}`. Do not address environmental failures by changing source.

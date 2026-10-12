@@ -7,6 +7,8 @@ description: Run explicitly requested bounded CReview rounds by composing start,
 
 Coordinate the four CReview phase skills in the root agent. Do not create phase-leader agents; each phase already owns its sub-agent delegation.
 
+Before creating outputs, read `../../rules/worktree.md` and apply its initialization and execution contract. Inherit `target_dir` and `main_root` from the parent and pass them to every child. All `.codex/tmp/` paths are absolute paths rooted at `metadata_root`.
+
 ## Runtime paths
 
 Resolve this skill's absolute `skill_dir` and `plugin_root`, and read `../../rules/sub-agent.md`. Read the sibling skill files before executing their phase:
@@ -25,6 +27,7 @@ Options:
 - `--confirm` (default OFF) — After triage and estimate are persisted, show the estimate summary and wait for the user's instruction to continue before respond.
 - `--confirm-round` (default OFF) — Wait for the user's instruction to continue before starting the next round.
 - `--commit` (default OFF) — Forward to respond.
+- `--worktree[=branch]` (default OFF) — Run in a separate worktree and enable `--commit`.
 - `--incremental` (default OFF) — From Round 2 onward, review only the committed range from the previous round's starting revision through the current round's starting revision instead of the whole branch. This option also enables `--commit`.
 - `--adr` (default OFF) — Allow triage or respond to create an ADR beside the review document for a durable design decision. Existing ADRs referenced by the review document are read and updated during fixes regardless of this option.
 - `--max-rounds N` — Default 10, range 1–20.
@@ -33,6 +36,8 @@ Options:
 - `--output-dir {path}` — Compatibility option for earlier Codex releases. Use the path as the exact run directory without branch-directory selection. If combined with the positional argument, stop and report the conflict.
 
 ## Review documents
+
+After worktree initialization, pass `target_dir` and `main_root` to every phase.
 
 Unless `--output-dir` is set, obtain the current branch with `git branch --show-current` at startup and choose the run directory once:
 
@@ -66,12 +71,14 @@ Triage deletes its temporary directory at phase completion, so create a dedicate
 
 1. Spawn one detection agent with `templates/divergence-check.md`, bundled profile `../../references/agents/review-helper.md`, and expected ID `6570a998-e9f3-4421-af84-6911eebd7c07`. Variables: `plugin_root`, `document_path`, `previous_round_doc_paths`, and `output_path = {gate_tmp_dir}/divergence.jsonl`. Return value: `{divergence_count, investigator, template_id}`.
 2. When `divergence_count >= 1`, confirm the detection file exists and spawn one investigation agent with `templates/divergence-investigate.md`, the selected `investigator.profile_path` (a general agent without a profile when null), and expected ID `ad54f81e-81f1-43c0-acff-0941524b8a3e`. Variables: `plugin_root`, `divergence_path = {gate_tmp_dir}/divergence.jsonl`, `document_path`, `previous_round_doc_paths`, `template_path = {skill_dir}/templates/divergence-report.md`, `report_path = {run-dir}/divergence-round{N}.md`, and `language`. The same agent investigates all divergences. Confirm the returned `report_path` exists.
-3. After detection and any required investigation succeed, delete only the dedicated temporary directory with `python "{plugin_root}/scripts/del_tmp.py" {gate_tmp_dir}` and return to the round's confirmation step. Zero divergences require neither investigation nor a divergence pause. Report missing outputs or agent failures, record the round's results, and proceed to the final report without running fixes.
+3. After detection and any required investigation succeed, delete only the dedicated temporary directory with `python "{plugin_root}/scripts/del_tmp.py" "{gate_tmp_dir}"` and return to the round's confirmation step. Zero divergences require neither investigation nor a divergence pause. Report missing outputs or agent failures, record the round's results, and proceed to the final report without running fixes.
 
 Use `(none)` overrides for both agents. Follow `sub-agent.md` for launch messages, template ID validation, and concurrency limits.
 
 ## Final report
 
 Spawn one aggregator with `templates/final-report-compile.md`, bundled profile `../../references/agents/review-helper.md`, expected ID `4f8a2d1c-9b35-4e67-a2c1-8b5d3f9e7a16`, all round document paths and statistics, `templates/final-report.md`, final path `{run-dir}/final-report.md`, and the user's language. Verify the returned path exists.
+
+On completion, including errors and user stops, apply the completion contract in `../../rules/worktree.md`.
 
 Report the final path, number of rounds, total findings, fixed/resolved/unresolved counts, and any stopped condition or workflow warning.

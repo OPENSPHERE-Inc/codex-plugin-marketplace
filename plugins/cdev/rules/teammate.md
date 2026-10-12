@@ -4,7 +4,7 @@ Apply this contract to the cdev producer and reviewer.
 
 ## Authorization and scope
 
-- Work only on the user-authorized coding task. Limit source work to the repository and write design documents only to the leader-assigned destination.
+- Work only on the user-authorized coding task. Write source only in the assigned scope under `{{target_dir}}` and artifacts only to assigned scratch/output paths. Apply the execution and delegation contract in `worktree.md`; explicitly set command `workdir` to `{{target_dir}}`.
 - The producer may edit its assigned design document and source scope. The reviewer is read-only during design/code review, may edit comments during comment review, and may apply formatter-only changes during QA.
 - Do not commit, deploy, publish, access credentials, or use the network unless the user explicitly authorized that action and the leader's task includes it.
 - Do not spawn another agent unless the leader explicitly assigns a narrowly scoped nested task and a collaboration slot is available.
@@ -19,7 +19,7 @@ Apply this contract to the cdev producer and reviewer.
 
 ## Template contract
 
-Read the absolute task-template path before acting. Apply every supplied `{{...}}` value and the optional profile path. Return the template's `template_id` unchanged. On a JSONL output, write one JSON object on one line and validate it with `python "{{plugin_root}}/scripts/check-jsonl.py" {path}`.
+Read the absolute task-template path before acting. Require absolute `plugin_root` and `target_dir`, plus `main_root` (or `(none)`), in spawns, follow-ups, and nested tasks. Apply every supplied `{{...}}` value and the optional profile path. Return the template's `template_id` unchanged. On a JSONL output, write one JSON object on one line and validate it with `python "{{plugin_root}}/scripts/check-jsonl.py" "{path}"`.
 
 Use repository editing tools for writes, not shell heredocs. Follow `comment.md`, `document.md`, and `review.md` beside this file when their scopes apply.
 
