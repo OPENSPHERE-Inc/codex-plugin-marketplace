@@ -44,6 +44,69 @@ Round 2 以降は triage の後、修正対象がある場合に発散ゲート�
 `--confirm` の見積確認も必要な場合は1回にまとめます。
 続行時に指定した修正方針は、そのラウンドのフィードバック再修正にも適用します。
 
+各レビュー文書にはラウンド番号を記載します。最終レポートには別作業の推奨に加え、
+ループ終了時に修正ステータスが付いていない受け入れ済み指摘も残します。
+
+## プルリクエストのレビュー
+
+~~~text
+$creview:start https://github.com/owner/repository/pull/123
+~~~
+
+PR mode は Git 2.41 以上と認証済みの `gh` を必要とします。PR は open で、host・owner・
+repository が現在の clone の remote に一致する必要があります。PR URL と `--base`・
+`--range` は併用できません。merge base から PR head までを対象に、rename 検出を無効化し、
+submodule 変更を表示し、merge base の属性を使って差分を取得します。差分取得の失敗時は
+どの mode でもレビューを中断します。
+
+現在の checkout が PR head ならその場でレビューし、scratch 外の tracked 未コミット変更は
+エラーにします。それ以外では `.codex/worktrees/` に detached worktree を作ります。
+Git hook・fsmonitor・filter driver を無効化し、LFS smudge を skip、symlink は通常 file として
+checkout します。終了時に worktree を削除し、dirty や削除失敗なら保持して報告します。
+branch は作成しません。
+
+既定では全階層・大文字小文字違いの `AGENTS.md`、`AGENTS.override.md`、`.codex`、`.agents`、
+`.mcp.json` を worktree から除外し、その変更は diff からレビューします。
+`$creview:start ... --trust` はこれらも checkout します。ユーザー自身の依頼にある指定だけが
+有効です。agent 設定を実ファイル付きで確認するときは、sandbox 内で `--trust` または
+PR head での in-place レビューを使います。
+
+専用の本文レビュアーが PR の title・body・CI 結果を変更 code と照合します。失敗した GitHub
+Actions job のログ抜粋を取得でき、再実行は重複排除し、ログ取得先は PR 自身の repository に
+限定します。comment と review は文脈として各一覧最大50件を参照します。指摘は変更 code を
+位置とし、根拠の本文・CI 出力を含めます。未完了 check、無関係な失敗、comment 自体は
+指摘対象にしません。文書には翻訳しない header marker
+`- **PR:** {url} (head {sha}, base {sha})` を保持します。後工程はまだこの marker を解釈しません。
+
+`$creview:rounds` は PR URL を受け付けません。親 flow が start を PR mode で呼ぶ場合、
+checkout は親が所有し、既に PR head である必要があります。
+`$creview:rounds --worktree` とは別の仕組みです。
+
+PR 本文と checkout file はレビュー対象データです。review agent は PR worktree の code を
+実行せず、remote へ書き込みません。本文レビュアーの tool 制約は prompt 上の契約であり、
+Codex collaboration がこの reference profile 専用の tool allowlist を強制するわけではありません。
+この workflow はユーザーが repository と PR を確認して信頼したことを前提とします。
+file 除外や helper の保護は判断の補助であり、実行境界は sandbox と権限設定に依存します。
+in-place review では既存の agent 設定と環境の自動処理が残ります。
+`--trust` は実行や remote 書き込みの許可を増やしません。
+
+## テキストハンクのない変更
+
+start の全 mode で、binary の追加・更新・削除、mode 変更、空 file、rename を含む全変更 file を
+reviewer へ割り当てます。空のレビュー文書になるのは変更 file が0件の場合だけです。
+scope の file 数上限にもこれらを含めます。
+
+reviewer は拡張子に加えて利用箇所から観点を選びます。画像は利用可能な画像表示 tool で確認し、
+削除済みや表示非対応の binary は利用箇所から判断します。本物の binary を表示できないこと自体は
+指摘にしません。行を持たない変更への指摘は1行目を使います。
+
+binary と表示された source・script・設定・lockfile・Markdown も text としてレビューします。
+拡張子がなくても利用箇所から判断します。全体を確認し、変更行を特定できない場合や全体を
+読めない場合はその点を報告します。PR worktree から除外された agent file が binary 変更だけを
+示す場合はレビュー不能を報告します。NUL byte や属性により binary 扱いされた text の変更行は
+まだ diff に出ず、text diff の強制は後続対応です。`--range` の実ファイル確認は現在の checkout を
+参照するため、range の終端 revision と異なる場合があります。
+
 ## 実行モデル
 
 - ルートエージェントがワークフローリーダーを維持します。

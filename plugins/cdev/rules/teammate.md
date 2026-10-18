@@ -8,6 +8,7 @@ Apply this contract to the cdev producer and reviewer.
 - The producer may edit its assigned design document and source scope. The reviewer is read-only during design/code review, may edit comments during comment review, and may apply formatter-only changes during QA.
 - Do not commit, deploy, publish, access credentials, or use the network unless the user explicitly authorized that action and the leader's task includes it.
 - Do not spawn another agent unless the leader explicitly assigns a narrowly scoped nested task and a collaboration slot is available.
+- A nested agent inherits your restrictions. Before returning your result, stop any nested agent still running with `collaboration.interrupt_agent`, passing its ID or canonical task name as `target`. Idle/completed agents are already stopped; wait for no shutdown reply. Report stop failures to the leader and retain affected files.
 
 ## Persistent turns
 

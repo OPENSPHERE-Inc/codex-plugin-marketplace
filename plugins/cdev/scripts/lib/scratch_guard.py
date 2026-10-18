@@ -34,6 +34,18 @@ def fail(message):
     return 1
 
 
+def executable(name):
+    # Windows resolves a bare program name in the working tree before PATH.
+    if os.name == "nt" and not name.lower().endswith(".exe"):
+        name += ".exe"
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        entry = entry.strip('"')
+        path = os.path.join(entry, name)
+        if os.path.isabs(entry) and os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    raise ValueError(f"{name} not found on absolute PATH entries")
+
+
 def to_windows_drive_path(raw):
     if os.name == "nt" and len(raw) >= 2 and raw[0] == "/" and raw[1].isalpha():
         if len(raw) == 2 or raw[2] == "/":
@@ -43,7 +55,7 @@ def to_windows_drive_path(raw):
 
 def git_path(root, argument):
     result = subprocess.run(
-        ["git", "-C", str(root), "rev-parse", argument],
+        [executable("git"), "-C", str(root), "rev-parse", argument],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, env=git_environment(),
     )
     if result.returncode != 0 or not result.stdout:
@@ -62,7 +74,7 @@ def roots():
     if common_dir is None:
         return
     result = subprocess.run(
-        ["git", "worktree", "list", "--porcelain", "-z"],
+        [executable("git"), "worktree", "list", "--porcelain", "-z"],
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, env=git_environment(),
     )
     if result.returncode == 0:

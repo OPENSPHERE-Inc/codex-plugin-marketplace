@@ -14,8 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_NAMES = ("cprompt", "creview", "cdev")
 PLUGIN_VERSIONS = {
     "cprompt": "0.2.0",
-    "creview": "0.3.0",
-    "cdev": "0.2.0",
+    "creview": "0.4.0",
+    "cdev": "0.2.1",
 }
 MARKETPLACE_NAME = "opensphere-inc"
 UUID_PATTERN = re.compile(
@@ -51,7 +51,7 @@ def runtime_files(root: Path) -> dict[Path, Path]:
     if not root.is_dir():
         return result
     for path in root.rglob("*"):
-        if not path.is_file():
+        if not path.is_file() or "__pycache__" in path.parts:
             continue
         relative = path.relative_to(root)
         if relative.parts[0] == ".codex-plugin":
