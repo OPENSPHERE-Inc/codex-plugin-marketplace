@@ -11,11 +11,15 @@ Codex のスキルとコラボレーションツール向けに移植してい�
 | プラグイン | スキル | 用途 |
 | --- | --- | --- |
 | `cprompt` | `$cprompt:edit` | AI 向けプロンプトを作成・改訂し、自己レビューします。 |
-| `creview` | `$creview:start`、`$creview:triage`、`$creview:respond`、`$creview:resolve`、`$creview:rounds` | 段階的なマルチエージェントコードレビューを実行します。 |
+| `creview` | `$creview:start`、`$creview:triage`、`$creview:respond`、`$creview:resolve`、`$creview:rounds` | local 変更または GitHub PR をレビューし、指摘の分類・修正・検証を行います。 |
 | `cdev` | `$cdev:coding` | producer と reviewer を維持しながらコーディングタスクを実装します。 |
 
 マルチエージェントスキルは明示的に呼び出した場合だけ起動します。
 通常のレビューや実装依頼から暗黙には起動しません。
+
+`$creview:start` は GitHub PR URL を受け付け、binary などテキストハンクのない変更も対象にします。
+PR mode は Git 2.41 以上と認証済みの `gh` が必要です。workspace と trust の選択は
+[CReview README](plugins/creview/README_ja.md#プルリクエストのレビュー) を参照してください。
 
 ## インストール
 

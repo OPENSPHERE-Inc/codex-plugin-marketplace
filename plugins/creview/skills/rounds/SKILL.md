@@ -54,7 +54,7 @@ Write divergence investigation reports to `{run-dir}/divergence-round{N}.md`. Wr
 2. At the start of each round, record `git rev-parse HEAD` as `this_round_rev` and choose the review target:
    - With `--incremental` OFF, or in Round 1, use `--base` without a revision range. Later rounds re-review the whole branch diff, including committed and working-tree changes.
    - With `--incremental` ON from Round 2 onward, use `prev_round_rev..this_round_rev`. If the revisions are equal, stop the round loop because no new commit exists.
-3. Run `start` with explicit output `{run-dir}/review-round{N}.md` and the selected base or range.
+3. Run `start` with explicit output `{run-dir}/review-round{N}.md`, `Round {N}`, and the selected base or range.
 4. Run `triage` on that document, passing all earlier round document paths as previous-round context. On `error`, run no further phase, record the results in step 9, and proceed to the final report.
 5. From Round 2 on, when `will_fix_count >= 1` and `maintain_count + alternative_count >= 1`, run the divergence gate below. Do not run it inside the feedback loop.
 6. When divergence is detected, read `report_path` and present its content. When `--confirm` is set and Maintain / Alternative targets exist, present triage's `summary`. If either condition applies, present the applicable information together and wait once for the user's instruction to continue. Divergence confirmation does not depend on `--confirm`.

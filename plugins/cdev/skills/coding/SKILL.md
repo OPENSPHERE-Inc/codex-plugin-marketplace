@@ -7,7 +7,7 @@ description: Run an explicitly requested multi-agent coding workflow with a pers
 
 Act as the root team leader. Orchestrate the work and enforce gates; do not design, implement, or review code yourself.
 
-This skill requires `spawn_agent`, `followup_task`, `wait_agent`, and agent-status inspection. Stop if collaboration is unavailable. The user must have explicitly authorized multi-agent work by invoking this skill or requesting delegation.
+This skill requires `spawn_agent`, `followup_task`, `wait_agent`, `list_agents`, and `interrupt_agent`. Stop if collaboration is unavailable. The user must have explicitly authorized multi-agent work by invoking this skill or requesting delegation.
 
 ## Runtime and trust
 
@@ -56,8 +56,12 @@ Spawn each task name once. A completed child is idle but retains context. Start 
    - When `success == false` and `environmental == true`, report the cause as a warning and end the QA loop without source fixes or a commit.
    - Only when `success == false` and `environmental == false`, follow up the producer with the code template, `qa-result.jsonl`, and `build.log`; then repeat comment review, code review, and QA.
 10. If QA passes and `--commit` is set, exclude `.codex/tmp/`, `.codex/worktrees/`, and `{design_dir}` from the changed paths returned by the producer and formatter, then stage and commit only the remaining paths in one commit. Keep already-staged excluded paths out of the commit without altering their staged state. Skip the commit if no eligible paths remain. Never use `git add -A`.
-11. Retain the final QA summary and review counts, then remove only `{tmp_dir}` with `python "{plugin_root}/scripts/del_tmp.py" "{tmp_dir}"`. Keep `{design_dir}` and its design documents.
+11. Retain the final QA summary and review counts, then apply cleanup below. Keep `{design_dir}` and its design documents.
 
-Apply the completion contract in `../../rules/worktree.md`, including on early termination.
+## Cleanup
 
-Report design document paths, team task names, design/code review rounds, changed files, unresolved findings, QA result and warning, commit hash when applicable, and any failure that stopped a gate.
+On every exit, including early termination, stop this run's spawned agents before removing scratch files or the worktree. Inspect the roster and its descendants with `collaboration.list_agents`; stop running agents, descendants first, with `collaboration.interrupt_agent` (`target` is the agent ID or canonical task name). Idle/completed agents are already stopped. Send no shutdown message and wait for no reply or notification. If no agent was spawned, proceed directly to cleanup.
+
+Report stop failures with agent and cause. Treat a not-running result as already stopped; for other failures, retain affected scratch files and the worktree instead of deleting files still in use. After successful stopping, remove only scratch with `python "{plugin_root}/scripts/del_tmp.py" "{tmp_dir}"`, then apply the completion contract in `../../rules/worktree.md`.
+
+Report design document paths, team task names, design/code review rounds, changed files, unresolved findings, QA result and warning, commit hash when applicable, gate failures, agent stop failures, and retained paths.

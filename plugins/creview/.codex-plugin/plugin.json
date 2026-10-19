@@ -1,7 +1,7 @@
 {
   "name": "creview",
-  "version": "0.3.0",
-  "description": "Parallel code-review workflow for Codex: review, triage, respond, resolve, and multi-round orchestration.",
+  "version": "0.4.0",
+  "description": "Parallel local and GitHub PR reviews for Codex, with triage, fixes, verification, and multi-round orchestration.",
   "author": {
     "name": "OPENSPHERE Inc.",
     "url": "https://github.com/OPENSPHERE-Inc"
