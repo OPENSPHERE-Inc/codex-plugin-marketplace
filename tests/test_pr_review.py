@@ -491,7 +491,8 @@ class PullRequestTests(unittest.TestCase):
     def test_ci_preserves_unstarted_attempts_and_their_entire_group(self):
         for conclusion in ("SUCCESS", "FAILURE"):
             for status in ("QUEUED", "WAITING"):
-                for started in ({}, {"startedAt": None}, {"startedAt": ""}):
+                for started in ({}, {"startedAt": None}, {"startedAt": ""},
+                                {"startedAt": "0001-01-01T00:00:00Z"}):
                     for reverse in (False, True):
                         with self.subTest(conclusion=conclusion, status=status,
                                           started=started, reverse=reverse):

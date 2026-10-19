@@ -166,7 +166,9 @@ def job_log_excerpt(host, repo, job_id):
 
 
 def started_at(check):
-    return check.get("startedAt")
+    value = check.get("startedAt")
+    # gh serializes an unset time.Time as the Go zero timestamp.
+    return None if value == "0001-01-01T00:00:00Z" else value
 
 
 def check_key(check):
