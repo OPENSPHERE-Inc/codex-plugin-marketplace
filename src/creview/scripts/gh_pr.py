@@ -10,8 +10,9 @@ fetch: resolves <pr_url> (https://<host>/<owner>/<repo>/pull/<number>) with gh,
 requires <owner>/<repo> on <host> to be a remote of the current repository and
 the PR to be open, and writes two files to <out_dir>:
   pr.json          url, head and base commits, merge base
-  pr-context.json  title and body, CI check results (the latest attempt of each
-                   check in each workflow run; the first MAX_JOB_LOGS failed
+  pr-context.json  title and body, CI check results (Actions reruns are reduced
+                   to the latest attempt only when all attempts have start
+                   times; other checks are retained; the first MAX_JOB_LOGS failed
                    GitHub Actions jobs carry a log excerpt, or log_error when
                    it could not be fetched), and the conversation: issue
                    comments, submitted review bodies, and review comments, at
@@ -165,23 +166,31 @@ def job_log_excerpt(host, repo, job_id):
 
 
 def started_at(check):
-    return check.get("startedAt") or ""
+    return check.get("startedAt")
 
 
 def check_key(check):
     # A rerun keeps its workflow run's ID; a run for another event on the same head has its own.
     job = ACTIONS_JOB_RE.fullmatch(check.get("detailsUrl") or "")
-    return check.get("workflowName"), check.get("name"), job.group(3) if job else None
+    if not job:
+        return None
+    return (job.group(1).lower(), job.group(2).lower(), job.group(3),
+            check.get("workflowName"), check.get("name"))
 
 
 def ci_checks(rollup, host, repos):
     rollup = rollup or []
     # Reruns leave the earlier runs of a check in the rollup; a status context comes once.
     latest = {}
+    unstarted = set()
     for c in rollup:
         if c.get("__typename") != "StatusContext":
             key = check_key(c)
-            if key not in latest or started_at(c) > started_at(latest[key]):
+            if key is None:
+                continue
+            if not started_at(c):
+                unstarted.add(key)
+            elif key not in latest or started_at(c) > started_at(latest[key]):
                 latest[key] = c
     checks, logs = [], 0
     for c in rollup:
@@ -193,7 +202,8 @@ def ci_checks(rollup, host, repos):
                 "url": c.get("targetUrl"),
             })
             continue
-        if latest[check_key(c)] is not c:
+        key = check_key(c)
+        if key is not None and key not in unstarted and latest[key] is not c:
             continue
         check = {
             "name": c.get("name"),
@@ -367,11 +377,11 @@ def cmd_fetch(pr_url, out_dir):
     }
 
 
-def filter_overrides():
+def filter_overrides(cwd=None, env=None):
     # git skips a filter whose command is empty; required=false keeps that from failing.
     keys = run([
         "git", "config", "--name-only", "--get-regexp", r"^filter\..+\.(clean|smudge|process)$",
-    ], ok=(0, 1))
+    ], cwd=cwd, env=env, ok=(0, 1))
     overrides = []
     for name in dict.fromkeys(k[len("filter."):k.rindex(".")] for k in keys.splitlines() if k):
         overrides += [(f"filter.{name}.{cmd}", "") for cmd in ("clean", "smudge", "process")]
@@ -404,13 +414,12 @@ def hook_free_env(no_hooks):
     # Git before 2.36 takes core.fsmonitor=false as a hook command; an empty value disables it.
     env = checkout_env([
         ("core.hooksPath", no_hooks), ("core.fsmonitor", ""), ("core.symlinks", "false"),
-        *filter_overrides(),
     ])
     # Git before 2.31 ignores GIT_CONFIG_COUNT; refuse rather than run hooks.
     hooks = run(["git", "config", "--get", "core.hooksPath"], env=env, ok=(0, 1)).strip()
     if hooks != no_hooks:
         raise Error("git does not apply GIT_CONFIG_COUNT (Git 2.31 or later is required)")
-    return env
+    return checkout_env(filter_overrides(env=env), env)
 
 
 def remove_empty_parent(path):
@@ -524,6 +533,7 @@ def cmd_checkout(pr_json, *options):
         try:
             if not options:
                 env = leave_out_agent_files(path, env)
+            env = checkout_env(filter_overrides(cwd=path, env=env), env)
             run(["gh", "pr", "checkout", pr["url"], "--detach"], cwd=path, env=env)
             head = run(["git", "rev-parse", "HEAD"], cwd=path).strip()
             if head != head_sha:
@@ -564,6 +574,7 @@ def cmd_remove(path):
         if (Path(record["main_root"]).resolve() != Path(main_root).resolve()
                 or Path(record["worktree_path"]).resolve() != target.resolve()):
             raise Error(f"PR worktree ownership does not match: {path}")
+        env = checkout_env(filter_overrides(cwd=path, env=env), env)
         # git checks that the worktree is clean with a git status that inherits the overrides.
         run(["git", "-c", f"core.hooksPath={no_hooks}", "worktree", "remove", "--", path], env=env)
     remove_empty_parent(path)

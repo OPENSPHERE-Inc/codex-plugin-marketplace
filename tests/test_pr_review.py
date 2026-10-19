@@ -203,6 +203,126 @@ class PullRequestTests(unittest.TestCase):
             self.api["cmd_remove"](str(target))
         self.assertFalse(marker.exists())
 
+    def prepare_linked_worktree_filters(self):
+        (self.repo / ".gitattributes").write_text(
+            "tracked.txt filter=linked-text\nprocessed.txt filter=linked-process\n"
+        )
+        (self.repo / "processed.txt").write_text("process input\n")
+        (self.repo / "AGENTS.md").write_text("untrusted instructions\n")
+        git(self.repo, "add", ".gitattributes", "processed.txt", "AGENTS.md")
+        git(self.repo, "commit", "-qm", "linked worktree filters")
+        self.head = git(self.repo, "rev-parse", "HEAD").stdout.strip()
+        data = json.loads(self.metadata.read_text())
+        data["head_sha"] = self.head
+        self.metadata.write_text(json.dumps(data))
+
+        marker = self.repo / "executed.txt"
+        command = f'echo unexpected >> "{marker.as_posix()}"'
+        hooks = self.repo / ".git/test-hooks"
+        hooks.mkdir()
+        for name in ("post-checkout", "post-index-change"):
+            script = hooks / name
+            script.write_text("#!/bin/sh\n" + command + "\n")
+            script.chmod(0o755)
+        git(self.repo, "config", "core.hooksPath", str(hooks))
+        git(self.repo, "config", "core.fsmonitor", command)
+
+        config = self.repo / ".git/linked-filters"
+        for operation in ("clean", "smudge"):
+            git(self.repo, "config", "--file", str(config),
+                f"filter.linked-text.{operation}", command + "; cat")
+        git(self.repo, "config", "--file", str(config),
+            "filter.linked-process.process", command + "; exit 1")
+        for driver in ("linked-text", "linked-process"):
+            git(self.repo, "config", "--file", str(config), f"filter.{driver}.required", "true")
+        return config, marker
+
+    def enable_linked_worktree_filters(self, config):
+        git(self.repo, "config", "includeIf.gitdir:**/.git/worktrees/**.path", config.as_posix())
+        result = run(["git", "config", "--get", "filter.linked-text.smudge"],
+                     cwd=self.repo, check=False)
+        self.assertEqual(result.returncode, 1)
+
+    def test_linked_worktree_filters_are_disabled_for_checkout(self):
+        config, marker = self.prepare_linked_worktree_filters()
+        self.enable_linked_worktree_filters(config)
+        before = (self.repo / ".git/config").read_bytes()
+        for trust in (False, True):
+            with self.subTest(trust=trust):
+                target = self.checkout(trust=trust)
+                self.assertEqual((target / "tracked.txt").read_text(), "base\n")
+                self.assertEqual((target / "processed.txt").read_text(), "process input\n")
+                self.assertEqual((target / "AGENTS.md").exists(), trust)
+                self.assertEqual(git(target, "config", "--get",
+                                     "filter.linked-process.required").stdout.strip(), "true")
+                self.assertFalse(marker.exists())
+                with working_directory(self.repo):
+                    self.api["cmd_remove"](str(target))
+                self.assertFalse(marker.exists())
+                self.assertEqual((self.repo / ".git/config").read_bytes(), before)
+
+    def test_remove_disables_filters_enabled_only_in_linked_worktree(self):
+        config, marker = self.prepare_linked_worktree_filters()
+        target = self.checkout()
+        self.enable_linked_worktree_filters(config)
+        before = (self.repo / ".git/config").read_bytes()
+        for name in ("tracked.txt", "processed.txt"):
+            path = target / name
+            os.utime(path, (path.stat().st_atime, path.stat().st_mtime + 2))
+        with working_directory(self.repo):
+            self.api["cmd_remove"](str(target))
+        self.assertFalse(target.exists())
+        self.assertFalse(marker.exists())
+        self.assertEqual((self.repo / ".git/config").read_bytes(), before)
+
+    def test_failed_checkout_keeps_linked_filter_overrides_during_cleanup(self):
+        config, marker = self.prepare_linked_worktree_filters()
+        self.enable_linked_worktree_filters(config)
+        data = json.loads(self.metadata.read_text())
+        data["head_sha"] = "1" * 40
+        self.metadata.write_text(json.dumps(data))
+        before = git(self.repo, "worktree", "list", "--porcelain").stdout
+        original_remove = self.api["remove_worktree"]
+        original_run = self.api["run"]
+        cleaned = []
+
+        def cleanup(path, env):
+            for driver in ("linked-text", "linked-process"):
+                for operation in ("clean", "smudge", "process"):
+                    self.assertEqual(original_run(
+                        ["git", "config", "--get", f"filter.{driver}.{operation}"],
+                        cwd=path, env=env,
+                    ).strip(), "")
+                self.assertEqual(original_run(
+                    ["git", "config", "--get", f"filter.{driver}.required"], cwd=path, env=env,
+                ).strip(), "false")
+            cleaned.append(path)
+            return original_remove(path, env)
+
+        with patch.dict(self.api["cmd_checkout"].__globals__, {"remove_worktree": cleanup}):
+            with self.assertRaisesRegex(self.api["Error"], "updated after fetch"):
+                self.checkout()
+        self.assertEqual(len(cleaned), 1)
+        self.assertEqual(git(self.repo, "worktree", "list", "--porcelain").stdout, before)
+        self.assertFalse(marker.exists())
+
+    def test_remove_retains_worktree_when_filter_configuration_cannot_be_read(self):
+        target = self.checkout()
+        original_run = self.api["run"]
+        before = git(self.repo, "worktree", "list", "--porcelain").stdout
+
+        def unreadable_config(cmd, cwd=None, env=None, ok=(0,)):
+            if cmd[:3] == ["git", "config", "--name-only"] and Path(cwd or ".") == target:
+                raise self.api["Error"]("cannot read linked worktree filters")
+            return original_run(cmd, cwd, env, ok)
+
+        with working_directory(self.repo), patch.dict(
+            self.api["cmd_remove"].__globals__, {"run": unreadable_config}
+        ), self.assertRaisesRegex(self.api["Error"], "cannot read linked worktree filters"):
+            self.api["cmd_remove"](str(target))
+        self.assertTrue(target.exists())
+        self.assertEqual(git(self.repo, "worktree", "list", "--porcelain").stdout, before)
+
     def test_fetch_checks_url_remote_and_open_state_before_writes(self):
         with working_directory(self.repo):
             for url in ("https://github.com/example/project/issues/7",
@@ -308,6 +428,105 @@ class PullRequestTests(unittest.TestCase):
         self.assertEqual(len(result), 3)
         self.assertEqual(calls, [("github.com", "example/project", "13")])
         self.assertEqual(result[-1]["log_excerpt"], "failure cause")
+
+    def test_ci_preserves_same_named_external_checks(self):
+        for workflow in (None, ""):
+            with self.subTest(workflow=workflow):
+                rollup = [
+                    {"name": "test", "startedAt": "1", "status": "COMPLETED",
+                     "conclusion": "FAILURE", "detailsUrl": "https://ci.example/failed/1"},
+                    {"name": "test", "startedAt": "2", "status": "COMPLETED",
+                     "conclusion": "SUCCESS", "detailsUrl": "https://ci.other/passed/2"},
+                ]
+                if workflow is not None:
+                    for check in rollup:
+                        check["workflowName"] = workflow
+                with patch.dict(self.api["ci_checks"].__globals__, {
+                    "job_log_excerpt": lambda *args: self.fail("external CI log requested"),
+                }):
+                    result = self.api["ci_checks"](rollup, "github.com", {"example/project"})
+                self.assertEqual([check["conclusion"] for check in result],
+                                 ["FAILURE", "SUCCESS"])
+                self.assertEqual([check["url"] for check in result],
+                                 [check["detailsUrl"] for check in rollup])
+
+    def test_ci_keeps_actions_runs_from_different_hosts_and_repositories(self):
+        sources = [("github.com", "example/project"),
+                   ("github.com", "foreign/project"),
+                   ("github.enterprise", "example/project")]
+        rollup = [
+            {"name": "test", "workflowName": "CI", "startedAt": str(index),
+             "status": "COMPLETED", "conclusion": "FAILURE",
+             "detailsUrl": f"https://{host}/{repo}/actions/runs/1/job/{index}"}
+            for index, (host, repo) in enumerate(sources, 10)
+        ]
+        calls = []
+        with patch.dict(self.api["ci_checks"].__globals__, {
+            "job_log_excerpt": lambda *args: calls.append(args) or "failure cause",
+        }):
+            result = self.api["ci_checks"](rollup, "github.com", {"example/project"})
+        self.assertEqual([check["url"] for check in result],
+                         [check["detailsUrl"] for check in rollup])
+        self.assertEqual(calls, [("github.com", "example/project", "10")])
+        self.assertEqual(["log_excerpt" in check for check in result], [True, False, False])
+
+    def test_ci_caps_failed_job_logs_without_omitting_checks(self):
+        limit = self.api["MAX_JOB_LOGS"]
+        rollup = [
+            {"name": "test", "workflowName": "CI", "startedAt": "1",
+             "status": "COMPLETED", "conclusion": "FAILURE",
+             "detailsUrl": f"https://github.com/example/project/actions/runs/{index}/job/{index}"}
+            for index in range(limit + 2)
+        ]
+        calls = []
+        with patch.dict(self.api["ci_checks"].__globals__, {
+            "job_log_excerpt": lambda *args: calls.append(args) or "failure cause",
+        }):
+            result = self.api["ci_checks"](rollup, "github.com", {"example/project"})
+        self.assertEqual(len(result), limit + 2)
+        self.assertEqual(calls, [("github.com", "example/project", str(index))
+                                 for index in range(limit)])
+        self.assertEqual(sum("log_excerpt" in check for check in result), limit)
+
+    def test_ci_preserves_unstarted_attempts_and_their_entire_group(self):
+        for conclusion in ("SUCCESS", "FAILURE"):
+            for status in ("QUEUED", "WAITING"):
+                for started in ({}, {"startedAt": None}, {"startedAt": ""}):
+                    for reverse in (False, True):
+                        with self.subTest(conclusion=conclusion, status=status,
+                                          started=started, reverse=reverse):
+                            base_url = "https://github.com/example/project/actions/runs/1/job/"
+                            rollup = [
+                                {"name": "test", "workflowName": "CI", "startedAt": str(index),
+                                 "status": "COMPLETED", "conclusion": conclusion,
+                                 "detailsUrl": base_url + str(index)}
+                                for index in (10, 11)
+                            ]
+                            rollup.append({
+                                "name": "test", "workflowName": "CI", "status": status,
+                                "conclusion": None, "detailsUrl": base_url + "12", **started,
+                            })
+                            if reverse:
+                                rollup.reverse()
+                            calls = []
+                            with patch.dict(self.api["ci_checks"].__globals__, {
+                                "job_log_excerpt": lambda *args: calls.append(args) or "failure",
+                            }):
+                                result = self.api["ci_checks"](
+                                    rollup, "github.com", {"example/project"},
+                                )
+                            self.assertEqual([check["url"] for check in result],
+                                             [check["detailsUrl"] for check in rollup])
+                            self.assertEqual([check["status"] for check in result],
+                                             [check["status"] for check in rollup])
+                            self.assertEqual([check["conclusion"] for check in result],
+                                             [check["conclusion"] for check in rollup])
+                            expected = [
+                                ("github.com", "example/project",
+                                 check["detailsUrl"].rsplit("/", 1)[1])
+                                for check in rollup if check["conclusion"] == "FAILURE"
+                            ]
+                            self.assertEqual(calls, expected)
 
     def test_executable_lookup_ignores_worktree_and_relative_path_entries(self):
         name = "planted.exe" if os.name == "nt" else "planted"
