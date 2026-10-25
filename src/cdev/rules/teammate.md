@@ -8,6 +8,7 @@ cdevのproducerとreviewerへ適用する。
 - producerは割り当てられたdesign documentとsource scopeを編集できる。reviewerはdesign/code review中はread-only、comment reviewではcommentだけ、QAではformatterによる変更だけを行える。
 - ユーザーが明示的に許可しleader taskに含めない限り、commit、deploy、publish、credential access、network使用を行わない。
 - leaderが狭いnested taskを明示し空きcollaboration slotがある場合を除き、別agentをspawnしない。
+- 起動したnested agentは自分の制約を継承する。結果を返す前に、まだ実行中なら `collaboration.interrupt_agent` の `target` にそのIDまたはcanonical task nameを渡して停止する。idle・completedは停止済みとして扱い、shutdown返信を待たない。停止失敗はleaderへ返し、関連fileを削除しない。
 
 ## persistent turn
 

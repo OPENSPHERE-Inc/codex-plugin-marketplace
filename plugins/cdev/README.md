@@ -38,6 +38,9 @@ its path. The working directory `.codex/tmp/cdev-coding-{timestamp}/` is deleted
 5. Implement the design, review comments and code, and address findings.
 6. Run the repository's relevant verification and an independent QA gate.
 7. Commit only when the user explicitly requests it.
+8. Stop running teammates and their descendants with `collaboration.interrupt_agent`,
+   then remove scratch files and the workflow-owned worktree. Idle teammates need no shutdown
+   handshake. Stop failures are reported, with affected paths retained.
 
 The same two child agents are resumed for later phases, preserving context
 while leaving one collaboration slot available to the root workflow. If the

@@ -7,7 +7,7 @@ description: 明示的に依頼されたマルチエージェントcoding workfl
 
 root team leader として振る舞う。作業を調整してgateを強制し、自分では設計・実装・レビューを行わない。
 
-このskillには `spawn_agent`、`followup_task`、`wait_agent`、agent status確認が必要である。collaborationが利用できなければ停止する。ユーザーがこのskillを起動したか、委譲を求めた場合だけ実行する。
+このskillには `spawn_agent`、`followup_task`、`wait_agent`、`list_agents`、`interrupt_agent` が必要である。collaborationが利用できなければ停止する。ユーザーがこのskillを起動したか、委譲を求めた場合だけ実行する。
 
 ## runtimeとtrust
 
@@ -56,8 +56,12 @@ root leaderに加え、2つのpersistent childを使う:
    - `success == false` かつ `environmental == true` なら、原因を warning として報告し、source fix・commit をせず QA loop を終了する。
    - `success == false` かつ `environmental == false` の場合だけproducerへcode template、`qa-result.jsonl`、`build.log`をfollow upし、comment review、code review、QAを繰り返す。
 10. QA成功かつ`--commit`指定時は、producerとformatterが返したchanged pathから`.codex/tmp/`、`.codex/worktrees/`と`{design_dir}`を除外し、そのpathだけをstageしてcommitを1つ作る。除外pathが既にstageされていてもcommitに含めず、そのstage状態を維持する。対象pathがなければcommitしない。`git add -A`は使わない。
-11. 最終QA summaryとreview件数を保持し、`python "{plugin_root}/scripts/del_tmp.py" "{tmp_dir}"`で`{tmp_dir}`だけを削除する。`{design_dir}`と設計書は残す。
+11. 最終QA summaryとreview件数を保持し、下記の終了処理を行う。`{design_dir}`と設計書は残す。
 
-途中終了も含め、`../../rules/worktree.md` の終了処理を行う。
+## 終了処理
 
-設計書のpath、team task name、design/code review round、変更ファイル、未解決finding、QA結果とwarning、該当時のcommit hash、gateを停止したfailureを報告する。
+途中終了を含む全経路で、scratch・worktree削除前にこのrunのspawn済みagentを停止する。`collaboration.list_agents` でrosterとその子孫を確認し、実行中agentを子から順に `collaboration.interrupt_agent`（`target` にagent IDまたはcanonical task name）で停止する。idle・completedは停止済みとして扱う。shutdown messageを送らず、返信・通知を待たない。agent未起動なら直ちに後片付けへ進む。
+
+停止失敗はagent名と理由を報告する。not running相当は停止済みとして扱うが、それ以外は関連scratchとworktreeを保持し、処理中のfileを削除しない。停止成功後、`python "{plugin_root}/scripts/del_tmp.py" "{tmp_dir}"` でscratchだけを削除し、`../../rules/worktree.md` の終了処理を行う。
+
+設計書のpath、team task name、design/code review round、変更ファイル、未解決finding、QA結果とwarning、該当時のcommit hash、gateを停止したfailure、agent停止失敗と保持したpathを報告する。

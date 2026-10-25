@@ -11,11 +11,15 @@ A Codex plugin marketplace maintained by OPENSPHERE Inc. It ports the
 | Plugin | Skill | Purpose |
 | --- | --- | --- |
 | `cprompt` | `$cprompt:edit` | Create or revise AI-facing prompts and self-review them. |
-| `creview` | `$creview:start`, `$creview:triage`, `$creview:respond`, `$creview:resolve`, `$creview:rounds` | Run a staged multi-agent code review. |
+| `creview` | `$creview:start`, `$creview:triage`, `$creview:respond`, `$creview:resolve`, `$creview:rounds` | Review local changes or GitHub PRs, then triage, fix, and verify findings. |
 | `cdev` | `$cdev:coding` | Implement a coding task with persistent producer and reviewer agents. |
 
 The multi-agent skills activate only when explicitly invoked. Ordinary review
 and coding requests do not implicitly start these workflows.
+
+`$creview:start` accepts a GitHub PR URL and includes binary and other changes without text
+hunks. PR mode requires Git 2.41 or later and authenticated `gh`; see the
+[CReview README](plugins/creview/README.md#reviewing-a-pull-request) for workspace and trust options.
 
 ## Installation
 

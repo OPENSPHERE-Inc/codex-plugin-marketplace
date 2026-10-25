@@ -54,7 +54,7 @@ worktree 初期化後、全 phase に `target_dir`・`main_root` を渡す。
 2. 各 round の開始時に `git rev-parse HEAD` を `this_round_rev` として記録し、レビュー対象を決める:
    - `--incremental` が OFF、または Round 1: `--base` を使い、revision range は指定しない。後続 round も commit と working tree を含む branch 全体の差分を再レビューする。
    - `--incremental` が ON の Round 2 以降: `prev_round_rev..this_round_rev` を使う。両 revision が同じなら新しい commit がないため round loop を終了する。
-3. 明示 output `{run-dir}/review-round{N}.md` と確定した base または range で `start` を実行する。
+3. 明示 output `{run-dir}/review-round{N}.md`、`Round {N}`、確定した base または range で `start` を実行する。
 4. そのドキュメントに `triage` を実行し、それ以前の全 round document path を過去 round context として渡す。`error` があれば以降の phase を実行せず、手順 9 で結果を記録して最終レポートへ進む。
 5. Round 2 以降で `will_fix_count >= 1` かつ `maintain_count + alternative_count >= 1` の場合、下記の発散ゲートを実行する。フィードバックループ内では実行しない。
 6. 発散を検出した場合は `report_path` を読んで内容を提示する。`--confirm` 指定時かつ Maintain / Alternative target がある場合は triage の `summary` を示す。いずれかに該当すれば、該当する内容をまとめて提示してユーザーの続行指示を 1 回待つ。発散時の確認は `--confirm` の状態に依存しない。

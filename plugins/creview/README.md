@@ -44,6 +44,72 @@ The workflow presents that report and waits for an instruction to continue regar
 of `--confirm`, combining it with estimate confirmation when both apply.
 A fix policy supplied with continuation also applies to that round's feedback fixes.
 
+Each review document carries its round number. The final report includes accepted findings
+left without a fix status when the loop ends, as well as recommendations for separate work.
+
+## Reviewing a pull request
+
+~~~text
+$creview:start https://github.com/owner/repository/pull/123
+~~~
+
+PR mode requires Git 2.41 or later and authenticated `gh` access. The PR must be open and
+its host, owner, and repository must match a remote of the current clone. A PR URL cannot
+be combined with `--base` or `--range`. The review covers the merge base through the PR head;
+rename detection is disabled, submodule changes remain visible, and attributes come from the
+merge base. A failed diff capture stops the review in every mode.
+
+If the checkout is already at the PR head, it is reviewed in place; tracked uncommitted
+changes outside scratch paths stop the run. Otherwise, start creates a detached worktree under
+`.codex/worktrees/`. It disables Git hooks, fsmonitor, and filter drivers, skips LFS smudging,
+and checks symlinks out as plain files. The worktree is removed when the review ends;
+dirty worktrees or cleanup failures are retained and reported. No branch is created.
+
+By default, this worktree excludes `AGENTS.md`, `AGENTS.override.md`, `.codex`, `.agents`,
+and `.mcp.json`, including nested and differently cased names. Their changes are reviewed
+from the diff. `$creview:start ... --trust` also checks these files out; this option must
+come from the user's own request. For agent configuration inspection with files present,
+use `--trust` or an in-place review in a sandbox.
+
+A dedicated description reviewer checks code against the PR's title, description, and CI
+results. Failed GitHub Actions jobs can carry log excerpts; reruns are deduplicated and
+job logs are fetched only from the PR's own repositories. Comments and reviews provide
+context, with at most 50 entries per list. Every finding is anchored in changed code and
+includes the relevant description or CI evidence. Pending checks, unrelated failures, and
+comments themselves are not findings. The report retains the untranslated header marker
+`- **PR:** {url} (head {sha}, base {sha})`; later phases do not yet interpret this marker.
+
+`$creview:rounds` does not accept a PR URL. When a parent flow invokes start in PR mode,
+it owns the checkout, which must already be at the PR head. This is separate from the
+`$creview:rounds --worktree` option.
+
+PR text and checked-out files are review data. Review agents do not execute PR worktree
+code or write to remotes. The description reviewer's tool limits are prompt constraints;
+Codex collaboration does not enforce a separate tool allowlist for this reference profile.
+The workflow assumes the user has assessed and trusts the repository and PR. File exclusion
+and helper safeguards support that decision; sandbox and permission settings remain the
+execution boundary. In-place reviews retain existing agent configuration and environment
+automation; `--trust` does not grant execution or remote-write authority.
+
+## Changes without text hunks
+
+Every changed file is assigned to reviewers in every start mode, including binary additions,
+updates or deletions, mode changes, empty files, and renames. An empty review document is
+produced only when no file changed. Scope file limits apply to these changes too.
+
+Reviewers select perspectives from a file's uses as well as its extension. They can inspect
+an image with an available image-viewing tool; deleted or unsupported binary formats are
+judged from their uses. Inability to display a genuine binary is not itself a finding.
+Findings about changes without lines use line 1.
+
+A source, script, configuration, lockfile, or Markdown file shown as binary must still be
+reviewed as text, including extensionless files identified by their uses. Reviewers inspect
+the whole file and report when changed lines cannot be located or the content cannot be
+fully read. A changed agent file excluded from a PR worktree and shown only as binary is
+reported as unreviewable. Text classified as binary by NUL bytes or attributes still has
+no changed-line diff; forcing a text diff remains a follow-up. Under `--range`, file inspection
+uses the current checkout, which may differ from the range's end revision.
+
 ## Execution model
 
 - The root agent remains the workflow leader.
